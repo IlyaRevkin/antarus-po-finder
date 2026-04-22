@@ -1,0 +1,5 @@
+PySide6>=6.6.0
+py7zr
+qrcode[pil]
+Pillow
+pyinstaller
