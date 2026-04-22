@@ -23,6 +23,7 @@ from app.services.search_service import SearchService
 from app.services.upload_service import UploadService
 from app.services.sync_service import SyncService
 from app.services.hierarchy_service import HierarchyService
+from app.services.second_disk_service import SecondDiskService
 from app.ui.theme import apply_theme, get_palette
 
 from app.ui.pages.search_page import SearchPage
@@ -61,7 +62,8 @@ class MainWindow(QMainWindow):
         self.search_svc    = SearchService(self.db)
         self.upload_svc    = UploadService(self.db, self.cfg)
         self.sync_svc      = SyncService(self.db, self.cfg)
-        self.hierarchy_svc = HierarchyService(self.db)
+        self.hierarchy_svc  = HierarchyService(self.db)
+        self.second_disk_svc = SecondDiskService()
 
         self._role = self.cfg.current_role()
         self._theme_name = self.cfg.theme()

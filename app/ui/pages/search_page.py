@@ -10,9 +10,9 @@ import threading
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit,
     QPushButton, QLabel, QScrollArea, QFrame, QSizePolicy,
-    QMessageBox, QApplication, QFileDialog,
+    QMessageBox, QApplication, QFileDialog, QCompleter,
 )
-from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtCore import Qt, QTimer, QSize, QStringListModel
 from app.ui.icons import make_icon, ICON_SECONDARY, ICON_ON_ACCENT
 
 from app.domain.models import SearchResult
@@ -91,6 +91,7 @@ class SearchPage(QWidget):
         )
         self._search_input.setFixedHeight(38)
         self._search_input.returnPressed.connect(self._do_search)
+        self._search_input.textChanged.connect(self._on_query_changed)
         search_row.addWidget(self._search_input, 1)
 
         search_btn = QPushButton('Найти')
@@ -100,7 +101,21 @@ class SearchPage(QWidget):
         search_btn.clicked.connect(self._do_search)
         search_row.addWidget(search_btn)
 
+        self._schema_btn = QPushButton('Схема')
+        self._schema_btn.setObjectName('secondary')
+        self._schema_btn.setFixedHeight(38)
+        self._schema_btn.setVisible(False)
+        self._schema_btn.clicked.connect(self._open_or_print_schematic)
+        search_row.addWidget(self._schema_btn)
+
         layout.addLayout(search_row)
+
+        # ── Cabinet autocomplete (second disk) ────────────────────────────────
+        self._completer_model = QStringListModel()
+        self._completer = QCompleter(self._completer_model, self)
+        self._completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self._completer.setFilterMode(Qt.MatchContains)
+        self._search_input.setCompleter(self._completer)
 
         # ── Status label ──────────────────────────────────────────────────────
         self._status_lbl = QLabel('')
@@ -136,6 +151,39 @@ class SearchPage(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._refresh_completer()
+
+    def _refresh_completer(self):
+        disk = self._mw.cfg.second_disk_path()
+        names = self._mw.second_disk_svc.cabinet_names(disk) if disk else []
+        self._completer_model.setStringList(names)
+
+    def _on_query_changed(self, text: str):
+        disk = self._mw.cfg.second_disk_path()
+        if not disk or not text.strip():
+            self._schema_btn.setVisible(False)
+            return
+        path = self._mw.second_disk_svc.find_schematic(disk, text.strip())
+        self._schema_btn.setVisible(bool(path))
+
+    def _open_or_print_schematic(self):
+        from PySide6.QtWidgets import QMenu
+        disk = self._mw.cfg.second_disk_path()
+        query = self._search_input.text().strip()
+        if not disk or not query:
+            return
+        path = self._mw.second_disk_svc.find_schematic(disk, query)
+        if not path:
+            QMessageBox.information(self, 'Схема', 'Схема не найдена для этого шкафа.')
+            return
+        menu = QMenu(self)
+        open_act  = menu.addAction('Открыть схему')
+        print_act = menu.addAction('Печать схемы')
+        chosen = menu.exec(self._schema_btn.mapToGlobal(self._schema_btn.rect().bottomLeft()))
+        if chosen == open_act:
+            self._mw.second_disk_svc.open_schematic(path)
+        elif chosen == print_act:
+            self._mw.second_disk_svc.print_schematic(path)
 
     # ── Protocol folder helpers ───────────────────────────────────────────────
 

@@ -12,7 +12,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QLineEdit, QComboBox, QTextEdit, QPushButton,
-    QCheckBox, QGroupBox, QSizePolicy, QFrame,
+    QCheckBox, QGroupBox, QSizePolicy, QFrame, QGridLayout,
     QScrollArea, QFileDialog, QMessageBox,
 )
 from PySide6.QtCore import Qt, QSize, QTimer
@@ -139,14 +139,15 @@ class UploadPage(QWidget):
         self._form.addRow('Номер заявки', self._req_num_input)
         self._form.setRowVisible(self._req_num_input, False)
 
-        # Тип пуска
+        # Тип пуска — vertical list so all 4 always fit
         launch_w = QWidget()
-        launch_lay = QHBoxLayout(launch_w)
-        launch_lay.setContentsMargins(0, 0, 0, 0)
+        launch_vlay = QVBoxLayout(launch_w)
+        launch_vlay.setContentsMargins(0, 0, 0, 0)
+        launch_vlay.setSpacing(4)
         self._launch_checks: dict[str, QCheckBox] = {}
         for lt in LAUNCH_TYPES:
             cb = QCheckBox(lt)
-            launch_lay.addWidget(cb)
+            launch_vlay.addWidget(cb)
             self._launch_checks[lt] = cb
         self._form.addRow('Тип пуска *', launch_w)
 

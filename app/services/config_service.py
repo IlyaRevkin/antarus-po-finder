@@ -30,6 +30,7 @@ os.makedirs(LOCAL_TEMPLATES, exist_ok=True)
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DEFAULTS = {
     'root_path':            '',
+    'second_disk_path':     '',   # второй диск: имена шкафов + электросхемы
     'inspection_folder':    '',   # папка осмотра (фото/сканы) — очищается кнопкой
     'admin_password':       '12345',
     'programmer_password':  '',
@@ -71,6 +72,12 @@ class ConfigService:
 
     def set_root_path(self, path: str):
         self.set('root_path', path)
+
+    def second_disk_path(self) -> str:
+        return self.get('second_disk_path')
+
+    def set_second_disk_path(self, path: str):
+        self.set('second_disk_path', path)
 
     def inspection_folder(self) -> str:
         """Папка осмотра (фото/сканы). Defaults to LOCAL_FW if not set."""
