@@ -94,6 +94,7 @@ class UploadPage(QWidget):
         self._form = QFormLayout(form_widget)
         self._form.setSpacing(10)
         self._form.setLabelAlignment(Qt.AlignRight)
+        self._form.setRowWrapPolicy(QFormLayout.DontWrapRows)
         form_scroll.setWidget(form_widget)
         form_box_vlay.addWidget(form_scroll)
 
@@ -112,26 +113,27 @@ class UploadPage(QWidget):
         self._ctrl_combo.currentIndexChanged.connect(self._on_ctrl_changed)
         self._form.addRow('Контроллер *', self._ctrl_combo)
 
-        # HW / SW version
+        # HW / SW + ОПЦ in one row
         hw_sw_w = QWidget()
+        hw_sw_w.setFixedHeight(36)
         hw_sw_lay = QHBoxLayout(hw_sw_w)
         hw_sw_lay.setContentsMargins(0, 0, 0, 0)
-        hw_sw_lay.setSpacing(6)
+        hw_sw_lay.setSpacing(8)
         self._hw_input = QLineEdit()
         self._hw_input.setPlaceholderText('42')
+        self._hw_input.setFixedHeight(34)
         self._hw_input.textChanged.connect(self._update_preview)
         hw_sw_lay.addWidget(self._hw_input, 1)
         hw_sw_lay.addWidget(QLabel('SW:'))
         self._sw_input = QLineEdit()
         self._sw_input.setPlaceholderText('1')
+        self._sw_input.setFixedHeight(34)
         self._sw_input.textChanged.connect(self._update_preview)
         hw_sw_lay.addWidget(self._sw_input, 1)
-        self._form.addRow('HW / SW *', hw_sw_w)
-
-        # ОПЦ режим
-        self._opc_check = QCheckBox('ОПЦ режим')
+        self._opc_check = QCheckBox('ОПЦ')
         self._opc_check.toggled.connect(self._on_opc_toggled)
-        self._form.addRow('', self._opc_check)
+        hw_sw_lay.addWidget(self._opc_check)
+        self._form.addRow('HW / SW *', hw_sw_w)
 
         self._req_num_input = QLineEdit()
         self._req_num_input.setPlaceholderText('напр. 1312')
@@ -139,16 +141,18 @@ class UploadPage(QWidget):
         self._form.addRow('Номер заявки', self._req_num_input)
         self._form.setRowVisible(self._req_num_input, False)
 
-        # Тип пуска — vertical list so all 4 always fit
+        # Тип пуска — horizontal row
         launch_w = QWidget()
-        launch_vlay = QVBoxLayout(launch_w)
-        launch_vlay.setContentsMargins(0, 0, 0, 0)
-        launch_vlay.setSpacing(4)
+        launch_w.setFixedHeight(28)
+        launch_hlay = QHBoxLayout(launch_w)
+        launch_hlay.setContentsMargins(0, 0, 0, 0)
+        launch_hlay.setSpacing(20)
         self._launch_checks: dict[str, QCheckBox] = {}
         for lt in LAUNCH_TYPES:
             cb = QCheckBox(lt)
-            launch_vlay.addWidget(cb)
+            launch_hlay.addWidget(cb)
             self._launch_checks[lt] = cb
+        launch_hlay.addStretch()
         self._form.addRow('Тип пуска *', launch_w)
 
         # Описание

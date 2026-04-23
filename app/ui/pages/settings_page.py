@@ -44,6 +44,7 @@ class SettingsPage(QWidget):
             ('Общие',       self._build_general_tab),
             ('Правила',     self._build_rules_tab),
             ('Иерархия',    self._build_hierarchy_tab),
+            ('Типы',        self._build_types_tab),
             ('Быстрый доступ', self._build_quickapps_tab),
             ('Префиксы',    self._build_prefixes_tab),
         ]
@@ -1194,15 +1195,19 @@ class _RuleDialog(QDialog):
             self._eq_combo.setCurrentText(r.equipment_type)
         form.addRow('Тип оборудования', self._eq_combo)
 
-        self._work_list = QListWidget()
-        self._work_list.setSelectionMode(QAbstractItemView.MultiSelection)
-        self._work_list.setFixedHeight(90)
+        selected_wt = [w.strip() for w in r.work_type.split(',')] if r else []
+        self._work_checks: dict[str, QCheckBox] = {}
+        work_w = QWidget()
+        work_hlay = QHBoxLayout(work_w)
+        work_hlay.setContentsMargins(0, 0, 0, 0)
+        work_hlay.setSpacing(16)
         for wt in self._cfg.work_types():
-            item = QListWidgetItem(wt)
-            self._work_list.addItem(item)
-            if r and wt in [w.strip() for w in r.work_type.split(',')]:
-                item.setSelected(True)
-        form.addRow('Тип работы', self._work_list)
+            cb = QCheckBox(wt)
+            cb.setChecked(wt in selected_wt)
+            work_hlay.addWidget(cb)
+            self._work_checks[wt] = cb
+        work_hlay.addStretch()
+        form.addRow('Тип работы', work_w)
 
         self._ctrl_combo = QComboBox()
         self._ctrl_combo.setEditable(True)
@@ -1396,9 +1401,7 @@ class _RuleDialog(QDialog):
             name             = self._name.text().strip(),
             equipment_type   = self._eq_combo.currentText().strip(),
             work_type        = ', '.join(
-                self._work_list.item(i).text()
-                for i in range(self._work_list.count())
-                if self._work_list.item(i).isSelected()
+                wt for wt, cb in self._work_checks.items() if cb.isChecked()
             ),
             controller       = self._ctrl_combo.currentText().strip(),
             firmware_dir     = self._fw_dir.text().strip(),
