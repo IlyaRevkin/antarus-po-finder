@@ -41,12 +41,10 @@ class SettingsPage(QWidget):
         # QTabWidget::tab QSS is ignored by the Windows native style, so we
         # build our own tab bar to get full CSS control.
         tab_defs = [
-            ('Общие',       self._build_general_tab),
-            ('Правила',     self._build_rules_tab),
-            ('Иерархия',    self._build_hierarchy_tab),
-            ('Типы',        self._build_types_tab),
+            ('Общие',          self._build_general_tab),
+            ('Правила',        self._build_rules_tab),
+            ('Иерархия',       self._build_hierarchy_tab),
             ('Быстрый доступ', self._build_quickapps_tab),
-            ('Префиксы',    self._build_prefixes_tab),
         ]
 
         tab_bar = QHBoxLayout()
@@ -224,28 +222,6 @@ class SettingsPage(QWidget):
         save_pwd_row.addStretch()
         save_pwd_row.addWidget(save_pwd_btn)
         layout.addLayout(save_pwd_row)
-        _sep()
-
-        # ── Inspection folder ──────────────────────────────────────────────────
-        _section('Папка осмотра (фото/сканы)')
-        insp_row = QHBoxLayout()
-        insp_row.setSpacing(6)
-        self._insp_path_input = QLineEdit()
-        self._insp_path_input.setFixedHeight(36)
-        self._insp_path_input.setPlaceholderText('По умолчанию: локальная папка firmware')
-        insp_row.addWidget(self._insp_path_input, 1)
-        browse_insp_btn = QPushButton('…')
-        browse_insp_btn.setFixedWidth(36)
-        browse_insp_btn.setFixedHeight(36)
-        browse_insp_btn.setObjectName('secondary')
-        browse_insp_btn.clicked.connect(self._browse_insp)
-        insp_row.addWidget(browse_insp_btn)
-        save_insp_btn = QPushButton('Сохранить')
-        save_insp_btn.setFixedHeight(36)
-        save_insp_btn.setObjectName('secondary')
-        save_insp_btn.clicked.connect(self._save_insp_path)
-        insp_row.addWidget(save_insp_btn)
-        layout.addLayout(insp_row)
         _sep()
 
         # ── Sync interval ──────────────────────────────────────────────────────
@@ -876,7 +852,7 @@ class SettingsPage(QWidget):
     def _load_general(self):
         self._root_path_input.setText(self._mw.cfg.root_path())
         self._keep_arch_cb.setChecked(self._mw.cfg.keep_archives())
-        self._insp_path_input.setText(self._mw.cfg.get('inspection_folder'))
+
         self._sync_interval_input.setText(str(self._mw.cfg.sync_interval_min()))
         self._second_disk_input.setText(self._mw.cfg.second_disk_path())
 
@@ -915,14 +891,6 @@ class SettingsPage(QWidget):
         self._mw.second_disk_svc.invalidate_cache()
         self._mw.show_status('Путь второго диска сохранён')
 
-    def _browse_insp(self):
-        path = QFileDialog.getExistingDirectory(self, 'Папка осмотра', '')
-        if path:
-            self._insp_path_input.setText(path)
-
-    def _save_insp_path(self):
-        self._mw.cfg.set_inspection_folder(self._insp_path_input.text().strip())
-        self._mw.show_status('Папка осмотра сохранена')
 
     def _save_sync_interval(self):
         try:

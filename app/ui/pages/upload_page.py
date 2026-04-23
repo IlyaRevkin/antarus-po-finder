@@ -113,25 +113,28 @@ class UploadPage(QWidget):
         self._ctrl_combo.currentIndexChanged.connect(self._on_ctrl_changed)
         self._form.addRow('Контроллер *', self._ctrl_combo)
 
-        # HW / SW + ОПЦ in one row
+        # HW / SW version
         hw_sw_w = QWidget()
-        hw_sw_w.setFixedHeight(42)
+        hw_sw_w.setMinimumHeight(46)  # QSS: border(1)+padding(6)+min-height(32)+padding(6)+border(1)
         hw_sw_lay = QHBoxLayout(hw_sw_w)
-        hw_sw_lay.setContentsMargins(0, 3, 0, 3)
+        hw_sw_lay.setContentsMargins(0, 0, 0, 0)
         hw_sw_lay.setSpacing(8)
         self._hw_input = QLineEdit()
         self._hw_input.setPlaceholderText('42')
         self._hw_input.textChanged.connect(self._update_preview)
-        hw_sw_lay.addWidget(self._hw_input, 1)
+        hw_sw_lay.addWidget(self._hw_input, 2)
         hw_sw_lay.addWidget(QLabel('SW:'))
         self._sw_input = QLineEdit()
         self._sw_input.setPlaceholderText('1')
+        self._sw_input.setMaximumWidth(90)
         self._sw_input.textChanged.connect(self._update_preview)
-        hw_sw_lay.addWidget(self._sw_input, 1)
-        self._opc_check = QCheckBox('ОПЦ')
-        self._opc_check.toggled.connect(self._on_opc_toggled)
-        hw_sw_lay.addWidget(self._opc_check)
+        hw_sw_lay.addWidget(self._sw_input)
         self._form.addRow('HW / SW *', hw_sw_w)
+
+        # ОПЦ режим — separate row
+        self._opc_check = QCheckBox('ОПЦ режим')
+        self._opc_check.toggled.connect(self._on_opc_toggled)
+        self._form.addRow('', self._opc_check)
 
         self._req_num_input = QLineEdit()
         self._req_num_input.setPlaceholderText('напр. 1312')

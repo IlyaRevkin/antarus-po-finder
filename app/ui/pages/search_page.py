@@ -51,12 +51,12 @@ class SearchPage(QWidget):
         open_proto_btn.clicked.connect(self._open_protocol_folder)
         proto_row.addWidget(open_proto_btn)
 
-        pick_proto_btn = QPushButton('Выбрать...')
-        pick_proto_btn.setObjectName('secondary')
-        pick_proto_btn.clicked.connect(self._pick_protocol_folder)
-        proto_row.addWidget(pick_proto_btn)
+        self._pick_proto_btn = QPushButton('Выбрать...')
+        self._pick_proto_btn.setObjectName('secondary')
+        self._pick_proto_btn.clicked.connect(self._pick_protocol_folder)
+        proto_row.addWidget(self._pick_proto_btn)
 
-        clear_proto_btn = QPushButton('Очистить')
+        clear_proto_btn = QPushButton('Очистить папку')
         clear_proto_btn.setObjectName('secondary')
         clear_proto_btn.clicked.connect(self._clear_protocol_folder)
         proto_row.addWidget(clear_proto_btn)
@@ -152,6 +152,7 @@ class SearchPage(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self._refresh_completer()
+        self._pick_proto_btn.setVisible(not bool(self._mw.cfg.protocol_folder()))
 
     def _refresh_completer(self):
         disk = self._mw.cfg.second_disk_path()
@@ -200,7 +201,8 @@ class SearchPage(QWidget):
     def _pick_protocol_folder(self):
         path = QFileDialog.getExistingDirectory(self, 'Выберите папку протокола')
         if path:
-            self._mw.cfg.set_inspection_folder( path)
+            self._mw.cfg.set_inspection_folder(path)
+            self._pick_proto_btn.setVisible(False)
             self._mw.show_status(f'Папка протокола: {path}')
 
     def _scan_document(self):
@@ -940,59 +942,76 @@ class SearchPage(QWidget):
 
     def _show_params_hierarchy_dialog(self):
         from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QComboBox,
-                                        QLabel, QPushButton, QDialogButtonBox, QHBoxLayout)
+                                        QLabel, QPushButton, QHBoxLayout)
         root_path = self._mw.cfg.root_path()
 
         dlg = QDialog(self)
         dlg.setWindowTitle('Поиск параметров')
-        dlg.setMinimumWidth(480)
+        dlg.setMinimumWidth(500)
         lay = QVBoxLayout(dlg)
 
-        form = QFormLayout()
+        hint = QLabel('Не заполняйте поля — покажет все параметры.\nЧем больше выбрано, тем точнее выборка.')
+        hint.setObjectName('muted')
+        lay.addWidget(hint)
 
-        # Тип параметра
+        form = QFormLayout()
+        form.setSpacing(8)
+        ALL = '— (все) —'
+
         type_combo = QComboBox()
-        type_combo.addItems(['УПП', 'ПЧ-КПЧ'])
+        type_combo.addItem(ALL, '')
+        type_combo.addItem('УПП', 'УПП')
+        type_combo.addItem('ПЧ-КПЧ', 'ПЧ-КПЧ')
         form.addRow('Тип:', type_combo)
 
-        # Подтип шкафа
         sub_combo = QComboBox()
+        sub_combo.addItem(ALL, None)
         subtypes = self._mw.db.get_all_equipment_subtypes()
         for s in subtypes:
             sub_combo.addItem(s.folder_name, s)
         form.addRow('Подтип шкафа:', sub_combo)
 
-        # Производитель
         mfr_combo = QComboBox()
-        manufacturers = self._mw.db.get_param_manufacturers()
-        mfr_combo.addItems(manufacturers)
+        mfr_combo.addItem(ALL, '')
+        for m in self._mw.db.get_param_manufacturers():
+            mfr_combo.addItem(m, m)
         form.addRow('Производитель:', mfr_combo)
 
-        # Тип подключения
         conn_combo = QComboBox()
-        conn_combo.addItems(['Аналог', 'Дискрет'])
+        conn_combo.addItem(ALL, '')
+        conn_combo.addItem('Аналог', 'Аналог')
+        conn_combo.addItem('Дискрет', 'Дискрет')
         form.addRow('Тип подключения:', conn_combo)
 
         lay.addLayout(form)
 
-        # Preview path
         preview_lbl = QLabel('—')
         preview_lbl.setWordWrap(True)
         preview_lbl.setObjectName('muted')
         lay.addWidget(preview_lbl)
 
-        def _update():
+        def _best_path():
+            """Return the most specific existing folder based on selections."""
+            parts = [root_path, 'Параметры']
+            t = type_combo.currentData()
+            if t:
+                parts.append(t)
             sub = sub_combo.currentData()
-            if not sub:
-                preview_lbl.setText('—')
+            if sub:
+                parts.append(sub.folder_name)
+            m = mfr_combo.currentData()
+            if m:
+                parts.append(m)
+            c = conn_combo.currentData()
+            if c:
+                parts.append(c)
+            return os.path.join(*parts) if root_path else ''
+
+        def _update():
+            path = _best_path()
+            if not path:
+                preview_lbl.setText('Путь к диску не настроен')
                 return
-            path = self._mw.hierarchy_svc.params_path(
-                root_path,
-                type_combo.currentText(),
-                sub.folder_name,
-                mfr_combo.currentText(),
-                conn_combo.currentText(),
-            )
             exists = '✓' if os.path.isdir(path) else '✗'
             preview_lbl.setText(f'{exists} {path}')
 
@@ -1005,18 +1024,11 @@ class SearchPage(QWidget):
         btn_row = QHBoxLayout()
         open_btn = QPushButton('Открыть папку')
         def _open():
-            sub = sub_combo.currentData()
-            if not sub:
+            path = _best_path()
+            if not path:
                 return
-            path = self._mw.hierarchy_svc.params_path(
-                root_path, type_combo.currentText(),
-                sub.folder_name, mfr_combo.currentText(), conn_combo.currentText(),
-            )
-            if os.path.isdir(path):
-                os.startfile(path)
-            else:
-                from PySide6.QtWidgets import QMessageBox
-                QMessageBox.information(dlg, 'Папка', f'Папка не существует:\n{path}')
+            os.makedirs(path, exist_ok=True)
+            os.startfile(path)
         open_btn.clicked.connect(_open)
         btn_row.addWidget(open_btn)
         btn_row.addStretch()
