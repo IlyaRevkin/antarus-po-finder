@@ -843,7 +843,6 @@ class SettingsPage(QWidget):
         super().showEvent(event)
         self._load_general()
         self._load_rules()
-        self._load_prefixes()
         self._load_apps()
         self._load_hierarchy()
 
