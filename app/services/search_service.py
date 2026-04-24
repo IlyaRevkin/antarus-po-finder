@@ -2,14 +2,70 @@
 FirmwareFinder — Search Service
 ==================================
 Parses search query, finds matching rules, ranks results.
+Also searches the new fw_versions hierarchy table.
 No I/O — uses rules from DB and version data.
 """
 
+import json
 import re
+from datetime import datetime
 from typing import Optional
 
 from app.domain.models import Rule, FirmwareVersion, SearchResult
 from app.infrastructure.database import Database
+
+
+# ── Hierarchy search adapters ─────────────────────────────────────────────────
+
+class _HVStr:
+    """Duck-types Version — str() returns version_raw."""
+    def __init__(self, raw: str):
+        self.raw = raw
+    def __str__(self) -> str:
+        return self.raw
+    def __repr__(self) -> str:
+        return self.raw
+    def __lt__(self, other) -> bool:
+        return self.raw < str(other)
+    def __le__(self, other) -> bool:
+        return self.raw <= str(other)
+
+
+class _HierarchyVersion:
+    """Duck-types FirmwareVersion for FirmwareCard."""
+    def __init__(self, row: dict):
+        self.version     = _HVStr(row.get('version_raw', ''))
+        self.description = row.get('description', '')
+        try:
+            self.upload_date = datetime.fromisoformat(row.get('upload_date', ''))
+        except Exception:
+            self.upload_date = datetime.now()
+        self.is_active = True
+
+
+class _HierarchyRule:
+    """Duck-types Rule for FirmwareCard (hierarchy-based search result)."""
+    def __init__(self, row: dict):
+        sub  = row.get('subtype_folder', '') or row.get('subtype_name', '')
+        ctrl = row.get('ctrl_name', '')
+        launch_types = json.loads(row.get('launch_types', '[]') or '[]')
+
+        self.name              = f'{sub} {ctrl}'.strip()
+        self.controller        = ctrl
+        self.equipment_type    = row.get('group_name', '')
+        self.work_type         = ', '.join(launch_types)
+        self.software_name     = self.name
+        self.firmware_type     = 'plc'
+        self.io_map_path       = row.get('io_map_path', '')
+        self.instructions_path = row.get('instructions_path', '')
+        self.passport_dir      = ''
+        self.local_dir         = ''
+        self.firmware_dir      = row.get('disk_path', '')  # absolute — used as open fallback
+        self.local_synced      = False
+        self.disk_snapshot     = {}
+        self.param_pch_dir     = ''
+        self.param_upp_dir     = ''
+        self.notes_file        = ''
 
 
 _SEPARATORS = re.compile(r'[,;\-/\\]+')
@@ -49,6 +105,28 @@ class SearchService:
             ))
 
         results.sort(key=lambda r: -r.score)
+        return results
+
+    def search_hierarchy(self, query: str) -> list[SearchResult]:
+        """Search fw_versions table by matching query tokens against hierarchy names."""
+        q = _normalize(query)
+        if not q:
+            return []
+        tokens = q.split()
+        if not tokens:
+            return []
+
+        rows = self._db.search_fw_versions_by_tokens(tokens)
+        results = []
+        for row in rows:
+            rule = _HierarchyRule(row)
+            ver  = _HierarchyVersion(row)
+            results.append(SearchResult(
+                rule=rule,
+                score=len(tokens) * 10,
+                latest_version=ver,
+                all_versions=[ver],
+            ))
         return results
 
     # ── Internal ──────────────────────────────────────────────────────────────

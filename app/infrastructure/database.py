@@ -374,6 +374,51 @@ class Database:
                                               hw_version=0, sw_version=0, dt_str='')
         return max(versions, key=_key)
 
+    def search_fw_versions_by_tokens(self, tokens: list[str]) -> list[dict]:
+        """Return latest fw_version per (subtype_id, controller_id) matching ALL tokens.
+        Tokens are matched case-insensitively against group name, subtype name/folder, controller name.
+        """
+        rows = self._conn.execute('''
+            SELECT fv.id, fv.subtype_id, fv.controller_id, fv.version_raw,
+                   fv.hw_version, fv.sw_version, fv.description, fv.upload_date,
+                   fv.disk_path, fv.filename, fv.io_map_path, fv.instructions_path,
+                   fv.launch_types, fv.is_opc,
+                   eg.name  AS group_name,
+                   es.name  AS subtype_name,
+                   es.folder_name AS subtype_folder,
+                   cm.name  AS ctrl_name
+            FROM fw_versions fv
+            JOIN equipment_subtypes es ON fv.subtype_id  = es.id
+            JOIN equipment_groups   eg ON es.group_id    = eg.id
+            JOIN controller_models  cm ON fv.controller_id = cm.id
+            WHERE fv.archived = 0
+            ORDER BY fv.id DESC
+        ''').fetchall()
+
+        if not rows:
+            return []
+
+        toks_upper = [t.upper() for t in tokens if t]
+
+        def _matches(row) -> bool:
+            haystack = ' '.join([
+                row['group_name']     or '',
+                row['subtype_name']   or '',
+                row['subtype_folder'] or '',
+                row['ctrl_name']      or '',
+            ]).upper()
+            return all(t in haystack for t in toks_upper)
+
+        seen: dict[tuple, dict] = {}
+        for row in rows:
+            if not _matches(row):
+                continue
+            key = (row['subtype_id'], row['controller_id'])
+            if key not in seen:
+                seen[key] = dict(row)
+
+        return list(seen.values())
+
     def archive_fw_version(self, version_id: int):
         self._conn.execute('UPDATE fw_versions SET archived=1 WHERE id=?', (version_id,))
         self._conn.commit()

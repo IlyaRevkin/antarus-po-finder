@@ -366,6 +366,13 @@ class SearchPage(QWidget):
 
         results = self._mw.search_svc.search(query)
 
+        # Also search new hierarchy (fw_versions); skip duplicates by rule name
+        hierarchy = self._mw.search_svc.search_hierarchy(query)
+        existing  = {r.rule.name for r in results}
+        for hr in hierarchy:
+            if hr.rule.name not in existing:
+                results.append(hr)
+
         if not results:
             self._status_lbl.setText(f'По запросу «{query}» ничего не найдено')
             self._empty_lbl.setText('Правило не найдено — добавьте его во вкладке Настройки')
@@ -438,6 +445,13 @@ class SearchPage(QWidget):
                 if fw:
                     os.startfile(fw)
                     return
+
+        # 3. Hierarchy result: firmware_dir is the absolute disk_path folder
+        fw_dir = self._resolve_rule_path(rule.firmware_dir)
+        if fw_dir and os.path.isdir(fw_dir):
+            fw = self._find_fw_file(fw_dir)
+            os.startfile(fw or fw_dir)
+            return
 
         QMessageBox.information(self, 'Открыть',
             'Прошивка не найдена локально.\nНажмите «Скачать» для копирования с сервера.')
