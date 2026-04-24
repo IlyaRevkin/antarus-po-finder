@@ -32,8 +32,9 @@ DEFAULTS = {
     'root_path':            '',
     'second_disk_path':     '',   # второй диск: имена шкафов + электросхемы
     'inspection_folder':    '',   # папка осмотра (фото/сканы) — очищается кнопкой
-    'admin_password':       '12345',
-    'programmer_password':  '',
+    'admin_password':             '12345',
+    'programmer_password':        '',
+    'naladchik_admin_password':   '',
     'current_role':         'naladchik',
     'theme':                'light',
     'keep_archives':        'false',
@@ -92,6 +93,9 @@ class ConfigService:
 
     def programmer_password(self) -> str:
         return self.get('programmer_password')
+
+    def naladchik_admin_password(self) -> str:
+        return self.get('naladchik_admin_password')
 
     def current_role(self) -> str:
         return self.get('current_role')

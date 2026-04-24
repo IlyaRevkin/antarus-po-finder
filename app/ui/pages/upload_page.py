@@ -342,8 +342,11 @@ class UploadPage(QWidget):
         ext = os.path.splitext(self._src_path)[1] if self._src_path else '.psl'
         fname = build_firmware_filename(sub.folder_name, ctrl.name, fwv, ext, req_num)
 
+        grp_name = group.name if group else '?'
+        sub_display = sub.name if sub.name != '—' else ''
+        path_parts = [p for p in ['ПО', grp_name, sub_display, folder_in_ctrl, fwv.raw] if p]
         self._preview_lbl.setText(
-            f'ПО / {sub.folder_name} / {folder_in_ctrl} / {fwv.raw}\n{fname}'
+            f'{" / ".join(path_parts)}\n{fname}'
         )
 
     # ── Previous version suggestion ───────────────────────────────────────────
@@ -448,7 +451,7 @@ class UploadPage(QWidget):
         fwv = FWVersion.build(group.prefix, sub.prefix, hw_int, sw_int)
         hs  = self._mw.hierarchy_svc
 
-        dst_folder = hs.fw_path(root_path, sub.folder_name,
+        dst_folder = hs.fw_path(root_path, group.name, sub.name,
                                 ctrl.name, fwv.raw, is_opc=is_opc)
 
         if os.path.exists(dst_folder):
@@ -473,12 +476,12 @@ class UploadPage(QWidget):
 
             io_map_src = self._io_map_input.text().strip()
             if io_map_src:
-                io_dst = hs.io_map_path(root_path, sub.folder_name, ctrl.name)
+                io_dst = hs.io_map_path(root_path, group.name, sub.name, ctrl.name)
                 self._copy_to_folder(io_map_src, io_dst)
 
             instr_src = self._instructions_input.text().strip()
             if instr_src:
-                instr_dst = hs.instr_path(root_path, sub.folder_name, ctrl.name)
+                instr_dst = hs.instr_path(root_path, group.name, sub.name, ctrl.name)
                 self._copy_to_folder(instr_src, instr_dst)
 
         except OSError as e:

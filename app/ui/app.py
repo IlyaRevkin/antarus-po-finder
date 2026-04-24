@@ -41,8 +41,8 @@ NAV_ITEMS = [
 
 ROLE_ACCESS = {
     'naladchik':       {'search'},
-    'naladchik_admin': {'search', 'templates'},
-    'programmer':      {'search', 'upload'},
+    'naladchik_admin': {'search', 'templates', 'settings'},
+    'programmer':      {'upload'},
     'administrator':   {'search', 'upload', 'templates', 'settings'},
 }
 
@@ -282,7 +282,12 @@ class MainWindow(QMainWindow):
                 if expected and pwd != expected:
                     QMessageBox.warning(dlg, 'Ошибка', 'Неверный пароль программиста.')
                     return
-            # naladchik / naladchik_admin — no password required
+            elif role == 'naladchik_admin':
+                expected = self.cfg.naladchik_admin_password()
+                if expected and pwd != expected:
+                    QMessageBox.warning(dlg, 'Ошибка', 'Неверный пароль нал-администратора.')
+                    return
+            # naladchik — no password required
             dlg.accept()
             self.switch_role(role)
 

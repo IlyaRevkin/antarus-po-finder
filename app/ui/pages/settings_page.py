@@ -42,8 +42,8 @@ class SettingsPage(QWidget):
         # build our own tab bar to get full CSS control.
         tab_defs = [
             ('Общие',          self._build_general_tab),
-            ('Правила',        self._build_rules_tab),
             ('Иерархия',       self._build_hierarchy_tab),
+            ('Производители',  self._build_manufacturers_tab),
             ('Быстрый доступ', self._build_quickapps_tab),
         ]
 
@@ -192,28 +192,25 @@ class SettingsPage(QWidget):
 
         # ── Passwords ─────────────────────────────────────────────────────────
         _section('Пароли доступа')
-        admin_row = QHBoxLayout()
-        admin_row.setSpacing(6)
-        admin_lbl = QLabel('Администратор:')
-        admin_lbl.setFixedWidth(160)
-        admin_row.addWidget(admin_lbl)
-        self._admin_pwd = QLineEdit(self._mw.cfg.admin_password())
-        self._admin_pwd.setEchoMode(QLineEdit.Password)
-        self._admin_pwd.setFixedHeight(36)
-        self._admin_pwd.setPlaceholderText('Пароль администратора')
-        admin_row.addWidget(self._admin_pwd, 1)
-        layout.addLayout(admin_row)
-        prog_row = QHBoxLayout()
-        prog_row.setSpacing(6)
-        prog_lbl = QLabel('Программист:')
-        prog_lbl.setFixedWidth(160)
-        prog_row.addWidget(prog_lbl)
-        self._prog_pwd = QLineEdit(self._mw.cfg.programmer_password())
-        self._prog_pwd.setEchoMode(QLineEdit.Password)
-        self._prog_pwd.setFixedHeight(36)
-        self._prog_pwd.setPlaceholderText('Пароль программиста')
-        prog_row.addWidget(self._prog_pwd, 1)
-        layout.addLayout(prog_row)
+
+        def _pwd_row(label_text: str, placeholder: str, value: str):
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            lbl = QLabel(label_text)
+            lbl.setFixedWidth(200)
+            row.addWidget(lbl)
+            edit = QLineEdit(value)
+            edit.setEchoMode(QLineEdit.Password)
+            edit.setFixedHeight(36)
+            edit.setPlaceholderText(placeholder)
+            row.addWidget(edit, 1)
+            layout.addLayout(row)
+            return edit
+
+        self._admin_pwd       = _pwd_row('Администратор:',       'Пароль администратора',       self._mw.cfg.admin_password())
+        self._nal_admin_pwd   = _pwd_row('Нал-Администратор:',   'Пароль нал-администратора',   self._mw.cfg.naladchik_admin_password())
+        self._prog_pwd        = _pwd_row('Программист:',         'Пароль программиста',         self._mw.cfg.programmer_password())
+
         save_pwd_row = QHBoxLayout()
         save_pwd_btn = QPushButton('Сохранить пароли')
         save_pwd_btn.setFixedHeight(36)
@@ -392,6 +389,65 @@ class SettingsPage(QWidget):
 
         layout.addStretch()
         return w
+
+    # ═══════════════════════════ MANUFACTURERS TAB ════════════════════════════
+
+    def _build_manufacturers_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+
+        lbl = QLabel('Производители параметров (ПЧ / УПП)')
+        lbl.setObjectName('section-label')
+        layout.addWidget(lbl)
+
+        self._manuf_list = QListWidget()
+        self._manuf_list.setFixedHeight(260)
+        layout.addWidget(self._manuf_list)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
+        add_btn = QPushButton('Добавить')
+        add_btn.setObjectName('secondary')
+        add_btn.setFixedHeight(34)
+        add_btn.clicked.connect(self._add_manufacturer)
+        btn_row.addWidget(add_btn)
+        del_btn = QPushButton('Удалить')
+        del_btn.setObjectName('secondary')
+        del_btn.setFixedHeight(34)
+        del_btn.clicked.connect(self._delete_manufacturer)
+        btn_row.addWidget(del_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+        layout.addStretch()
+
+        self._load_manufacturers()
+        return w
+
+    def _load_manufacturers(self):
+        if not hasattr(self, '_manuf_list'):
+            return
+        self._manuf_list.clear()
+        for name in self._mw.db.get_param_manufacturers():
+            self._manuf_list.addItem(name)
+
+    def _add_manufacturer(self):
+        name, ok = QInputDialog.getText(self, 'Добавить производителя', 'Название:')
+        if ok and name.strip():
+            self._mw.db.add_param_manufacturer(name.strip())
+            self._load_manufacturers()
+
+    def _delete_manufacturer(self):
+        item = self._manuf_list.currentItem()
+        if not item:
+            return
+        name = item.text()
+        reply = QMessageBox.question(self, 'Удалить', f'Удалить производителя «{name}»?',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self._mw.db.delete_param_manufacturer(name)
+            self._load_manufacturers()
 
     # ═══════════════════════════ QUICK APPS TAB ═══════════════════════════════
 
@@ -871,8 +927,9 @@ class SettingsPage(QWidget):
         self._mw.show_status('Путь сохранён')
 
     def _save_passwords(self):
-        self._mw.cfg.set('admin_password',      self._admin_pwd.text())
-        self._mw.cfg.set('programmer_password',  self._prog_pwd.text())
+        self._mw.cfg.set('admin_password',           self._admin_pwd.text())
+        self._mw.cfg.set('naladchik_admin_password', self._nal_admin_pwd.text())
+        self._mw.cfg.set('programmer_password',      self._prog_pwd.text())
         self._mw.show_status('Пароли сохранены')
 
     def _save_misc(self):
@@ -956,6 +1013,11 @@ class SettingsPage(QWidget):
             expected = self._mw.cfg.admin_password()
             if pwd != expected:
                 QMessageBox.warning(self, 'Доступ', 'Неверный пароль администратора.')
+                return
+        elif role == 'naladchik_admin':
+            expected = self._mw.cfg.naladchik_admin_password()
+            if expected and pwd != expected:
+                QMessageBox.warning(self, 'Доступ', 'Неверный пароль нал-администратора.')
                 return
         elif role == 'programmer':
             expected = self._mw.cfg.programmer_password()
