@@ -897,9 +897,17 @@ class SettingsPage(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._load_general()
-        self._load_apps()
-        self._load_hierarchy()
+        import traceback
+        for name, fn in [('_load_general', self._load_general),
+                         ('_load_apps',    self._load_apps),
+                         ('_load_hierarchy', self._load_hierarchy)]:
+            try:
+                fn()
+            except Exception:
+                traceback.print_exc()
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.critical(self, 'Ошибка загрузки',
+                    f'{name} упал:\n{traceback.format_exc()}')
 
     # ── General load/save ─────────────────────────────────────────────────────
 
