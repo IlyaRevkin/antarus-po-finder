@@ -109,6 +109,18 @@ class Database:
             name       TEXT UNIQUE NOT NULL,
             sort_order INTEGER NOT NULL DEFAULT 0
         );
+
+        -- Parameter files (ПЧ / УПП parameters)
+        CREATE TABLE IF NOT EXISTS param_files (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            subtype_id   INTEGER REFERENCES equipment_subtypes(id),
+            manufacturer TEXT    NOT NULL DEFAULT '',
+            filename     TEXT    NOT NULL,
+            disk_path    TEXT    NOT NULL,
+            description  TEXT    NOT NULL DEFAULT '',
+            upload_date  TEXT    NOT NULL DEFAULT '',
+            archived     INTEGER NOT NULL DEFAULT 0
+        );
         """)
         self._conn.commit()
 
@@ -449,6 +461,43 @@ class Database:
 
     def delete_param_manufacturer(self, name: str):
         self._conn.execute('DELETE FROM param_manufacturers WHERE name=?', (name,))
+        self._conn.commit()
+
+    # ── Param files ───────────────────────────────────────────────────────────
+
+    def add_param_file(self, data: dict) -> int:
+        cur = self._conn.execute(
+            '''INSERT INTO param_files
+               (subtype_id, manufacturer, filename, disk_path, description, upload_date)
+               VALUES (:subtype_id, :manufacturer, :filename, :disk_path, :description, :upload_date)''',
+            data,
+        )
+        self._conn.commit()
+        return cur.lastrowid
+
+    def get_param_files(self, subtype_id: int | None = None,
+                        manufacturer: str | None = None) -> list[dict]:
+        q = '''
+            SELECT pf.*, es.name AS subtype_name, es.folder_name,
+                   eg.name AS group_name
+            FROM param_files pf
+            LEFT JOIN equipment_subtypes es ON pf.subtype_id = es.id
+            LEFT JOIN equipment_groups   eg ON es.group_id   = eg.id
+            WHERE pf.archived = 0
+        '''
+        params: list = []
+        if subtype_id is not None:
+            q += ' AND pf.subtype_id = ?'
+            params.append(subtype_id)
+        if manufacturer:
+            q += ' AND pf.manufacturer = ?'
+            params.append(manufacturer)
+        q += ' ORDER BY pf.upload_date DESC'
+        rows = self._conn.execute(q, params).fetchall()
+        return [dict(r) for r in rows]
+
+    def delete_param_file(self, file_id: int):
+        self._conn.execute('UPDATE param_files SET archived=1 WHERE id=?', (file_id,))
         self._conn.commit()
 
     # ── Settings ──────────────────────────────────────────────────────────────

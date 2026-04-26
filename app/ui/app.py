@@ -30,11 +30,13 @@ from app.ui.pages.search_page import SearchPage
 from app.ui.pages.upload_page import UploadPage
 from app.ui.pages.templates_page import TemplatesPage
 from app.ui.pages.settings_page import SettingsPage
+from app.ui.pages.params_page import ParamsPage
 
 
 NAV_ITEMS = [
     ('search',    'Поиск',      'naladchik'),
     ('upload',    'Загрузка',   'programmer'),
+    ('params',    'Параметры',  'programmer'),
     ('templates', 'Шаблоны',   'programmer'),
     ('settings',  'Настройки', 'administrator'),
 ]
@@ -42,8 +44,8 @@ NAV_ITEMS = [
 ROLE_ACCESS = {
     'naladchik':       {'search'},
     'naladchik_admin': {'search', 'templates', 'settings'},
-    'programmer':      {'upload'},
-    'administrator':   {'search', 'upload', 'templates', 'settings'},
+    'programmer':      {'upload', 'params'},
+    'administrator':   {'search', 'upload', 'params', 'templates', 'settings'},
 }
 
 
@@ -87,6 +89,7 @@ class MainWindow(QMainWindow):
         self._pages: dict[str, QWidget] = {}
         self._add_page('search',    SearchPage(self))
         self._add_page('upload',    UploadPage(self))
+        self._add_page('params',    ParamsPage(self))
         self._add_page('templates', TemplatesPage(self))
         self._add_page('settings',  SettingsPage(self))
 
@@ -324,6 +327,7 @@ class MainWindow(QMainWindow):
         _nav_icons = {
             'search':    'search',
             'upload':    'upload',
+            'params':    'folder',
             'templates': 'folder',
             'settings':  'settings',
         }
