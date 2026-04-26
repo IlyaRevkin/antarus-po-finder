@@ -103,9 +103,9 @@ class ParamsPage(QWidget):
         form.addRow('Файл:', file_row)
 
         # Drop zone
-        self._drop_zone = MiniDropZone(self)
+        self._drop_zone = MiniDropZone()
         self._drop_zone.setFixedHeight(52)
-        self._drop_zone.file_dropped.connect(self._on_file_dropped)
+        self._drop_zone.path_changed.connect(self._on_file_dropped)
         form.addRow('', self._drop_zone)
 
         # Description
