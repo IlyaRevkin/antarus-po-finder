@@ -199,6 +199,21 @@ class Database:
         );
         """)
         self._conn.commit()
+        self._run_data_migrations()
+
+    def _run_data_migrations(self):
+        """One-time data fixes applied on every startup (idempotent)."""
+        # Remove '—' subtypes for groups that also have real subtypes.
+        # Reason: groups like НГР always have real subtypes; the '—' entry
+        # caused controllers to appear directly under the group folder,
+        # mixed with subtype folders.
+        self._conn.execute("""
+            DELETE FROM equipment_subtypes
+            WHERE name = '—' AND group_id IN (
+                SELECT DISTINCT group_id FROM equipment_subtypes WHERE name != '—'
+            )
+        """)
+        self._conn.commit()
 
     def _seed_hierarchy_defaults(self):
         """Insert default hierarchy data if tables are empty."""

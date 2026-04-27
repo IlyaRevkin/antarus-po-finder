@@ -437,6 +437,7 @@ class SettingsPage(QWidget):
         if ok and name.strip():
             self._mw.db.add_param_manufacturer(name.strip())
             self._load_manufacturers()
+            self._auto_rebuild()
 
     def _delete_manufacturer(self):
         item = self._manuf_list.currentItem()
@@ -448,6 +449,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_param_manufacturer(name)
             self._load_manufacturers()
+            self._auto_rebuild(deleted_folder=name)
 
     # ═══════════════════════════ QUICK APPS TAB ═══════════════════════════════
 
@@ -624,6 +626,19 @@ class SettingsPage(QWidget):
             item.setData(Qt.UserRole, c)
             self._ctrl_hier_list.addItem(item)
 
+    def _auto_rebuild(self, deleted_folder: str = ''):
+        """Rebuild folder structure on disk after hierarchy changes."""
+        root = self._mw.cfg.root_path()
+        if not root or not os.path.isdir(root):
+            return
+        result = self._mw.hierarchy_svc.ensure_structure(root)
+        if result.get('ok'):
+            if result['created_count'] > 0:
+                self._mw.show_status(f'Папки на диске обновлены: +{result["created_count"]}')
+            if deleted_folder:
+                self._mw.show_status(
+                    f'Папка «{deleted_folder}» на диске не удалена автоматически — удалите вручную при необходимости')
+
     def _add_group(self):
         from app.domain.hierarchy import EquipmentGroup
         name, ok = QInputDialog.getText(self, 'Добавить группу', 'Название (напр. НГР):')
@@ -642,6 +657,7 @@ class SettingsPage(QWidget):
                            sort_order=self._grp_table.rowCount() + 1)
         self._mw.db.upsert_equipment_group(g)
         self._load_hierarchy()
+        self._auto_rebuild()
         self._mw.show_status(f'Группа добавлена: {name.strip()}')
 
     def _del_group(self):
@@ -657,6 +673,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_equipment_group(g.id)
             self._load_hierarchy()
+            self._auto_rebuild(deleted_folder=g.name)
 
     def _add_subtype(self):
         from app.domain.hierarchy import EquipmentSubType
@@ -692,6 +709,7 @@ class SettingsPage(QWidget):
                              sort_order=len(self._mw.db.get_subtypes_for_group(group.id)) + 1)
         self._mw.db.upsert_equipment_subtype(s)
         self._load_hierarchy()
+        self._auto_rebuild()
         self._mw.show_status(f'Подтип добавлен: {folder_name}')
 
     def _del_subtype(self):
@@ -706,6 +724,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_equipment_subtype(s.id)
             self._load_hierarchy()
+            self._auto_rebuild(deleted_folder=s.folder_name)
 
     def _add_controller(self):
         from app.domain.hierarchy import ControllerModel
@@ -717,6 +736,7 @@ class SettingsPage(QWidget):
                             sort_order=self._ctrl_hier_list.count() + 1)
         self._mw.db.upsert_controller_model(c)
         self._load_hierarchy()
+        self._auto_rebuild()
         self._mw.show_status(f'Контроллер добавлен: {name.strip().upper()}')
 
     def _del_controller(self):
@@ -731,6 +751,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_controller_model(c.id)
             self._load_hierarchy()
+            self._auto_rebuild(deleted_folder=c.name)
 
     def _rebuild_hierarchy(self):
         root = self._mw.cfg.root_path()

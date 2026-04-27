@@ -133,31 +133,23 @@ def build_firmware_filename(folder_name: str, controller: str,
 # ── Default hierarchy data ────────────────────────────────────────────────────
 
 DEFAULT_EQUIPMENT_GROUPS: list[dict] = [
-    {'name': 'ПЖ',  'prefix': 1, 'sort_order': 1},
-    {'name': 'НГР', 'prefix': 2, 'sort_order': 2},
+    {'name': 'НГР', 'prefix': 1, 'sort_order': 1},
+    {'name': 'ПЖ',  'prefix': 2, 'sort_order': 2},
     {'name': 'ТГР', 'prefix': 3, 'sort_order': 3},
-    {'name': 'КНС', 'prefix': 4, 'sort_order': 4},
-    {'name': 'ШУЗ', 'prefix': 5, 'sort_order': 5},
 ]
 
 DEFAULT_SUB_TYPES: list[dict] = [
-    # ПЖ (group prefix=1)
-    {'group_name': 'ПЖ', 'name': 'КПЧ', 'prefix': 1, 'folder_name': 'ПЖ-КПЧ', 'sort_order': 1},
-    {'group_name': 'ПЖ', 'name': 'ХП',  'prefix': 2, 'folder_name': 'ПЖ-ХП',  'sort_order': 2},
-    {'group_name': 'ПЖ', 'name': 'FD',  'prefix': 3, 'folder_name': 'ПЖ-FD',  'sort_order': 3},
-    {'group_name': 'ПЖ', 'name': '—',   'prefix': 0, 'folder_name': 'ПЖ',     'sort_order': 4},
-    # НГР (group prefix=2)
+    # НГР — всегда имеет подтипы, "—" не нужен
     {'group_name': 'НГР', 'name': 'КПЧ', 'prefix': 1, 'folder_name': 'НГР-КПЧ', 'sort_order': 1},
     {'group_name': 'НГР', 'name': 'ВЗУ', 'prefix': 2, 'folder_name': 'НГР-ВЗУ', 'sort_order': 2},
     {'group_name': 'НГР', 'name': 'КНС', 'prefix': 3, 'folder_name': 'НГР-КНС', 'sort_order': 3},
     {'group_name': 'НГР', 'name': 'ПП',  'prefix': 4, 'folder_name': 'НГР-ПП',  'sort_order': 4},
-    {'group_name': 'НГР', 'name': '—',   'prefix': 0, 'folder_name': 'НГР',     'sort_order': 5},
-    # ТГР (no sub-types by default)
+    # ПЖ
+    {'group_name': 'ПЖ', 'name': 'КПЧ', 'prefix': 1, 'folder_name': 'ПЖ-КПЧ', 'sort_order': 1},
+    {'group_name': 'ПЖ', 'name': 'ХП',  'prefix': 2, 'folder_name': 'ПЖ-ХП',  'sort_order': 2},
+    {'group_name': 'ПЖ', 'name': 'FD',  'prefix': 3, 'folder_name': 'ПЖ-FD',  'sort_order': 3},
+    # ТГР — нет подтипов
     {'group_name': 'ТГР', 'name': '—',   'prefix': 0, 'folder_name': 'ТГР',     'sort_order': 1},
-    # КНС
-    {'group_name': 'КНС', 'name': '—',   'prefix': 0, 'folder_name': 'КНС',     'sort_order': 1},
-    # ШУЗ
-    {'group_name': 'ШУЗ', 'name': '—',   'prefix': 0, 'folder_name': 'ШУЗ',     'sort_order': 1},
 ]
 
 DEFAULT_CONTROLLERS: list[dict] = [

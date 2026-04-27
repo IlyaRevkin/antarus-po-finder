@@ -29,6 +29,7 @@ Structure:
 import os
 import json
 import logging
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -40,6 +41,14 @@ from app.domain.hierarchy import (
 from app.infrastructure.database import Database
 
 log = logging.getLogger(__name__)
+
+
+def _scandir_safe(path: str) -> list:
+    try:
+        return list(os.scandir(path))
+    except (OSError, PermissionError):
+        return []
+
 
 # Top-level folder names on the network disk
 FOLDER_PO         = 'ПО'
@@ -142,12 +151,118 @@ class HierarchyService:
         # ── Конфиги ──────────────────────────────────────────────────────────
         _mkdir(os.path.join(root_path, FOLDER_CONFIG))
 
+        # Move obsolete folders to Неизвестное / Неизвестные параметры
+        unknowns = self.collect_unknowns(root_path)
+
         return {
             'ok': True,
             'created': created,
-            'errors': errors,
+            'errors': errors + unknowns['errors'],
             'created_count': len(created),
+            'moved': unknowns['moved'],
+            'moved_count': len(unknowns['moved']),
         }
+
+    def collect_unknowns(self, root_path: str) -> dict:
+        """Move folders/files that don't fit the hierarchy to Неизвестное / Неизвестные параметры."""
+        if not root_path or not os.path.isdir(root_path):
+            return {'moved': [], 'errors': []}
+
+        moved: list[str] = []
+        errors: list[str] = []
+
+        groups       = self._db.get_all_equipment_groups()
+        subtypes     = self._db.get_all_equipment_subtypes()
+        controllers  = {c.name for c in self._db.get_all_controller_models()}
+        manufacturers = set(self._db.get_param_manufacturers())
+
+        group_names = {g.name for g in groups}
+        subs_by_group: dict[int, list] = {g.id: [] for g in groups}
+        for s in subtypes:
+            if s.group_id in subs_by_group:
+                subs_by_group[s.group_id].append(s)
+
+        special = {OPC_FOLDER, INSTRUCTIONS_FOLDER, IO_MAP_FOLDER}
+
+        # ── ПО ───────────────────────────────────────────────────────────────
+        po_root     = os.path.join(root_path, FOLDER_PO)
+        unknown_po  = os.path.join(po_root, UNKNOWN_FW_FOLDER)
+
+        if os.path.isdir(po_root):
+            for entry in _scandir_safe(po_root):
+                if entry.name == UNKNOWN_FW_FOLDER:
+                    continue
+                if not entry.is_dir():
+                    self._safe_move(entry.path, unknown_po, moved, errors)
+                    continue
+                if entry.name not in group_names:
+                    self._safe_move(entry.path, unknown_po, moved, errors)
+                    continue
+
+                # Inside group: check subtypes / controllers
+                grp = next(g for g in groups if g.name == entry.name)
+                grp_subs = subs_by_group[grp.id]
+                real_sub_names = {s.name for s in grp_subs if s.name != '—'}
+                has_dash = any(s.name == '—' for s in grp_subs)
+
+                valid = real_sub_names | special
+                if has_dash:
+                    valid |= controllers
+
+                for sub_entry in _scandir_safe(entry.path):
+                    if sub_entry.name not in valid:
+                        self._safe_move(sub_entry.path, unknown_po, moved, errors)
+
+        # ── Параметры ────────────────────────────────────────────────────────
+        params_root    = os.path.join(root_path, FOLDER_PARAMS)
+        unknown_params = os.path.join(params_root, UNKNOWN_PARAMS_FOLDER)
+
+        if os.path.isdir(params_root):
+            for entry in _scandir_safe(params_root):
+                if entry.name == UNKNOWN_PARAMS_FOLDER:
+                    continue
+                if not entry.is_dir() or entry.name not in group_names:
+                    self._safe_move(entry.path, unknown_params, moved, errors)
+                    continue
+
+                grp = next(g for g in groups if g.name == entry.name)
+                grp_subs = subs_by_group[grp.id]
+                real_sub_names = {s.name for s in grp_subs if s.name != '—'}
+                has_dash = any(s.name == '—' for s in grp_subs)
+
+                valid_at_grp = real_sub_names
+                if has_dash:
+                    valid_at_grp |= manufacturers
+
+                for sub_entry in _scandir_safe(entry.path):
+                    if sub_entry.name not in valid_at_grp:
+                        self._safe_move(sub_entry.path, unknown_params, moved, errors)
+                        continue
+                    # Inside real subtype: check manufacturers
+                    if sub_entry.name in real_sub_names and sub_entry.is_dir():
+                        for mfr_entry in _scandir_safe(sub_entry.path):
+                            if mfr_entry.name not in manufacturers:
+                                self._safe_move(mfr_entry.path, unknown_params, moved, errors)
+
+        return {'moved': moved, 'errors': errors}
+
+    @staticmethod
+    def _safe_move(src: str, dst_dir: str, moved: list, errors: list) -> None:
+        """Move src into dst_dir, resolving name conflicts with numeric suffix."""
+        try:
+            os.makedirs(dst_dir, exist_ok=True)
+            name = os.path.basename(src)
+            dst  = os.path.join(dst_dir, name)
+            i = 1
+            while os.path.exists(dst):
+                dst = os.path.join(dst_dir, f'{name}_{i}')
+                i += 1
+            shutil.move(src, dst)
+            moved.append(dst)
+            log.info(f'collect_unknowns: moved {src!r} → {dst!r}')
+        except (OSError, shutil.Error) as e:
+            errors.append(str(e))
+            log.warning(f'collect_unknowns: failed to move {src!r}: {e}')
 
     def scan_unknown_files(self, root_path: str) -> list[dict]:
         """Find files that don't fit the hierarchy structure."""

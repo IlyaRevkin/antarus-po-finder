@@ -15,16 +15,47 @@
 
 <div class="node">
   <a name="main.py"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/main.py" type="text/plain"><tt>main.py</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/main.py" type="text/plain"><tt>main.py</tt></a>
 <span class="moduletype">Script</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
  &#8226;   <a href="#PySide6.QtGui">PySide6.QtGui</a>
+ &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#_collections_abc">_collections_abc</a>
  &#8226;   <a href="#_weakrefset">_weakrefset</a>
  &#8226;   <a href="#abc">abc</a>
+ &#8226;   <a href="#app">app</a>
+ &#8226;   <a href="#app.domain">app.domain</a>
+ &#8226;   <a href="#app.domain.exceptions">app.domain.exceptions</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
+ &#8226;   <a href="#app.domain.models">app.domain.models</a>
+ &#8226;   <a href="#app.infrastructure">app.infrastructure</a>
+ &#8226;   <a href="#app.infrastructure.archive">app.infrastructure.archive</a>
+ &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
+ &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
+ &#8226;   <a href="#app.services">app.services</a>
+ &#8226;   <a href="#app.services.config_service">app.services.config_service</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
+ &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
+ &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
+ &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
+ &#8226;   <a href="#app.ui">app.ui</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
+ &#8226;   <a href="#app.ui.pages">app.ui.pages</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
+ &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
+ &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
+ &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
+ &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
+ &#8226;   <a href="#app.ui.theme">app.ui.theme</a>
+ &#8226;   <a href="#app.ui.widgets">app.ui.widgets</a>
+ &#8226;   <a href="#app.ui.widgets.drop_zone">app.ui.widgets.drop_zone</a>
+ &#8226;   <a href="#app.ui.widgets.firmware_card">app.ui.widgets.firmware_card</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#collections.abc">collections.abc</a>
@@ -3921,7 +3952,9 @@ imported by:
  &#8226;   <a href="#PySide6.QtGui">PySide6.QtGui</a>
  &#8226;   <a href="#PySide6.QtNetwork">PySide6.QtNetwork</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#PySide6.support">PySide6.support</a>
 
   </div>
@@ -3948,9 +3981,12 @@ imported by:
  &#8226;   <a href="#PySide6.QtGui">PySide6.QtGui</a>
  &#8226;   <a href="#PySide6.QtNetwork">PySide6.QtNetwork</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
  &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
@@ -3982,6 +4018,7 @@ imports:
 imported by:
     <a href="#PySide6.QtGui">PySide6.QtGui</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
  &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
@@ -4035,8 +4072,32 @@ imports:
   <div class="import">
 imported by:
     <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
  &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
+ &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="PySide6.QtSvgWidgets"></a>
+  <tt>PySide6.QtSvgWidgets</tt> <span class="moduletype"><tt>C:\Program Files\Python312\Lib\site-packages\PySide6\QtSvgWidgets.pyd</tt></span>  <div class="import">
+imports:
+    <a href="#PySide6">PySide6</a>
+ &#8226;   <a href="#PySide6.QtCore">PySide6.QtCore</a>
+ &#8226;   <a href="#PySide6.QtGui">PySide6.QtGui</a>
+ &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
+ &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -4060,8 +4121,10 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+    <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
+ &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
@@ -4069,6 +4132,28 @@ imported by:
  &#8226;   <a href="#app.ui.theme">app.ui.theme</a>
  &#8226;   <a href="#app.ui.widgets.drop_zone">app.ui.widgets.drop_zone</a>
  &#8226;   <a href="#app.ui.widgets.firmware_card">app.ui.widgets.firmware_card</a>
+ &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="PySide6.QtXml"></a>
+  <tt>PySide6.QtXml</tt> <span class="moduletype"><tt>C:\Program Files\Python312\Lib\site-packages\PySide6\QtXml.pyd</tt></span>  <div class="import">
+imports:
+    <a href="#PySide6">PySide6</a>
+ &#8226;   <a href="#PySide6.QtCore">PySide6.QtCore</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
+ &#8226;   <a href="#enum">enum</a>
+ &#8226;   <a href="#shiboken6">shiboken6</a>
+ &#8226;   <a href="#shiboken6.Shiboken">shiboken6.Shiboken</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#main.py">main.py</a>
 
   </div>
@@ -4223,6 +4308,7 @@ imported by:
  &#8226;   <a href="#PIL.features">PIL.features</a>
  &#8226;   <a href="#PySide6.support">PySide6.support</a>
  &#8226;   <a href="#PySide6.support.deprecated">PySide6.support.deprecated</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
  &#8226;   <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
  &#8226;   <a href="#charset_normalizer.api">charset_normalizer.api</a>
@@ -5555,13 +5641,14 @@ imported by:
 
 <div class="node">
   <a name="app"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/__init__.py" type="text/plain"><tt>app</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/__init__.py" type="text/plain"><tt>app</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imported by:
     <a href="#app.domain">app.domain</a>
  &#8226;   <a href="#app.infrastructure">app.infrastructure</a>
  &#8226;   <a href="#app.services">app.services</a>
  &#8226;   <a href="#app.ui">app.ui</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5569,7 +5656,7 @@ imported by:
 
 <div class="node">
   <a name="app.domain"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/domain/__init__.py" type="text/plain"><tt>app.domain</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/domain/__init__.py" type="text/plain"><tt>app.domain</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#app">app</a>
@@ -5578,7 +5665,9 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.domain.exceptions">app.domain.exceptions</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
  &#8226;   <a href="#app.domain.models">app.domain.models</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5586,7 +5675,7 @@ imported by:
 
 <div class="node">
   <a name="app.domain.exceptions"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/domain/exceptions.py" type="text/plain"><tt>app.domain.exceptions</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/domain/exceptions.py" type="text/plain"><tt>app.domain.exceptions</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.domain">app.domain</a>
@@ -5595,7 +5684,32 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.services.upload_service">app.services.upload_service</a>
+ &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.domain.hierarchy"></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/domain/hierarchy.py" type="text/plain"><tt>app.domain.hierarchy</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#app.domain">app.domain</a>
+ &#8226;   <a href="#dataclasses">dataclasses</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.infrastructure.database">app.infrastructure.database</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
+ &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5603,7 +5717,7 @@ imported by:
 
 <div class="node">
   <a name="app.domain.models"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/domain/models.py" type="text/plain"><tt>app.domain.models</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/domain/models.py" type="text/plain"><tt>app.domain.models</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#__future__">__future__</a>
@@ -5622,8 +5736,8 @@ imported by:
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
- &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
  &#8226;   <a href="#app.ui.widgets.firmware_card">app.ui.widgets.firmware_card</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5631,7 +5745,7 @@ imported by:
 
 <div class="node">
   <a name="app.infrastructure"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/infrastructure/__init__.py" type="text/plain"><tt>app.infrastructure</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/infrastructure/__init__.py" type="text/plain"><tt>app.infrastructure</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#app">app</a>
@@ -5642,6 +5756,7 @@ imported by:
     <a href="#app.infrastructure.archive">app.infrastructure.archive</a>
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5649,7 +5764,7 @@ imported by:
 
 <div class="node">
   <a name="app.infrastructure.archive"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/infrastructure/archive.py" type="text/plain"><tt>app.infrastructure.archive</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/infrastructure/archive.py" type="text/plain"><tt>app.infrastructure.archive</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.infrastructure">app.infrastructure</a>
@@ -5662,6 +5777,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.services.upload_service">app.services.upload_service</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5669,10 +5785,11 @@ imported by:
 
 <div class="node">
   <a name="app.infrastructure.database"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/infrastructure/database.py" type="text/plain"><tt>app.infrastructure.database</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/infrastructure/database.py" type="text/plain"><tt>app.infrastructure.database</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#app.domain.models">app.domain.models</a>
+    <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
+ &#8226;   <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#app.infrastructure">app.infrastructure</a>
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#json">json</a>
@@ -5685,10 +5802,12 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.services.config_service">app.services.config_service</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5696,7 +5815,7 @@ imported by:
 
 <div class="node">
   <a name="app.infrastructure.filesystem"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/infrastructure/filesystem.py" type="text/plain"><tt>app.infrastructure.filesystem</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/infrastructure/filesystem.py" type="text/plain"><tt>app.infrastructure.filesystem</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.infrastructure">app.infrastructure</a>
@@ -5714,6 +5833,7 @@ imported by:
     <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5721,7 +5841,7 @@ imported by:
 
 <div class="node">
   <a name="app.services"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/services/__init__.py" type="text/plain"><tt>app.services</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/__init__.py" type="text/plain"><tt>app.services</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#app">app</a>
@@ -5730,9 +5850,12 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.services.config_service">app.services.config_service</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5740,7 +5863,7 @@ imported by:
 
 <div class="node">
   <a name="app.services.config_service"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/services/config_service.py" type="text/plain"><tt>app.services.config_service</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/config_service.py" type="text/plain"><tt>app.services.config_service</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.infrastructure.database">app.infrastructure.database</a>
@@ -5756,6 +5879,34 @@ imported by:
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
+ &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.services.hierarchy_service"></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/hierarchy_service.py" type="text/plain"><tt>app.services.hierarchy_service</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
+ &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
+ &#8226;   <a href="#app.services">app.services</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#shutil">shutil</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5763,12 +5914,14 @@ imported by:
 
 <div class="node">
   <a name="app.services.search_service"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/services/search_service.py" type="text/plain"><tt>app.services.search_service</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/search_service.py" type="text/plain"><tt>app.services.search_service</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.services">app.services</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#typing">typing</a>
 
@@ -5776,6 +5929,28 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.services.second_disk_service"></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/second_disk_service.py" type="text/plain"><tt>app.services.second_disk_service</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.services">app.services</a>
+ &#8226;   <a href="#functools">functools</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#re">re</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5783,7 +5958,7 @@ imported by:
 
 <div class="node">
   <a name="app.services.sync_service"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/services/sync_service.py" type="text/plain"><tt>app.services.sync_service</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/sync_service.py" type="text/plain"><tt>app.services.sync_service</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.infrastructure.database">app.infrastructure.database</a>
@@ -5802,6 +5977,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5809,7 +5985,7 @@ imported by:
 
 <div class="node">
   <a name="app.services.upload_service"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/services/upload_service.py" type="text/plain"><tt>app.services.upload_service</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/services/upload_service.py" type="text/plain"><tt>app.services.upload_service</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app.domain.exceptions">app.domain.exceptions</a>
@@ -5830,6 +6006,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5837,7 +6014,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/__init__.py" type="text/plain"><tt>app.ui</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/__init__.py" type="text/plain"><tt>app.ui</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#app">app</a>
@@ -5850,6 +6027,7 @@ imported by:
  &#8226;   <a href="#app.ui.pages">app.ui.pages</a>
  &#8226;   <a href="#app.ui.theme">app.ui.theme</a>
  &#8226;   <a href="#app.ui.widgets">app.ui.widgets</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5857,7 +6035,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.app"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/app.py" type="text/plain"><tt>app.ui.app</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/app.py" type="text/plain"><tt>app.ui.app</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
@@ -5866,11 +6044,14 @@ imports:
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.services.config_service">app.services.config_service</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#app.ui">app.ui</a>
  &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
@@ -5889,7 +6070,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.icons"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/icons.py" type="text/plain"><tt>app.ui.icons</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/icons.py" type="text/plain"><tt>app.ui.icons</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
@@ -5906,6 +6087,7 @@ imported by:
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
  &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
  &#8226;   <a href="#app.ui.widgets.firmware_card">app.ui.widgets.firmware_card</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5913,7 +6095,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.pages"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/pages/__init__.py" type="text/plain"><tt>app.ui.pages</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/pages/__init__.py" type="text/plain"><tt>app.ui.pages</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#app.ui">app.ui</a>
@@ -5921,10 +6103,35 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
+    <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
+ &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
  &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.ui.pages.params_page"></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/pages/params_page.py" type="text/plain"><tt>app.ui.pages.params_page</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#PySide6.QtCore">PySide6.QtCore</a>
+ &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#app.ui.pages">app.ui.pages</a>
+ &#8226;   <a href="#app.ui.widgets.drop_zone">app.ui.widgets.drop_zone</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#shutil">shutil</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5932,7 +6139,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.pages.search_page"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/pages/search_page.py" type="text/plain"><tt>app.ui.pages.search_page</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/pages/search_page.py" type="text/plain"><tt>app.ui.pages.search_page</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
@@ -5961,6 +6168,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5968,12 +6176,14 @@ imported by:
 
 <div class="node">
   <a name="app.ui.pages.settings_page"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/pages/settings_page.py" type="text/plain"><tt>app.ui.pages.settings_page</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/pages/settings_page.py" type="text/plain"><tt>app.ui.pages.settings_page</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
  &#8226;   <a href="#app.domain.models">app.domain.models</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
  &#8226;   <a href="#app.ui.pages">app.ui.pages</a>
  &#8226;   <a href="#app.ui.widgets.drop_zone">app.ui.widgets.drop_zone</a>
@@ -5981,12 +6191,14 @@ imports:
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#shutil">shutil</a>
+ &#8226;   <a href="#traceback">traceback</a>
 
   </div>
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
- &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -5994,7 +6206,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.pages.templates_page"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/pages/templates_page.py" type="text/plain"><tt>app.ui.pages.templates_page</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/pages/templates_page.py" type="text/plain"><tt>app.ui.pages.templates_page</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
@@ -6008,6 +6220,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -6015,27 +6228,25 @@ imported by:
 
 <div class="node">
   <a name="app.ui.pages.upload_page"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/pages/upload_page.py" type="text/plain"><tt>app.ui.pages.upload_page</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/pages/upload_page.py" type="text/plain"><tt>app.ui.pages.upload_page</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
- &#8226;   <a href="#app.domain.exceptions">app.domain.exceptions</a>
- &#8226;   <a href="#app.domain.models">app.domain.models</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
+ &#8226;   <a href="#app.services.config_service">app.services.config_service</a>
  &#8226;   <a href="#app.ui.icons">app.ui.icons</a>
  &#8226;   <a href="#app.ui.pages">app.ui.pages</a>
- &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.widgets.drop_zone">app.ui.widgets.drop_zone</a>
- &#8226;   <a href="#dataclasses">dataclasses</a>
  &#8226;   <a href="#datetime">datetime</a>
- &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#shutil">shutil</a>
 
   </div>
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -6043,7 +6254,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.theme"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/theme.py" type="text/plain"><tt>app.ui.theme</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/theme.py" type="text/plain"><tt>app.ui.theme</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtGui">PySide6.QtGui</a>
@@ -6056,6 +6267,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -6063,7 +6275,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.widgets"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/widgets/__init__.py" type="text/plain"><tt>app.ui.widgets</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/widgets/__init__.py" type="text/plain"><tt>app.ui.widgets</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
     <a href="#app.ui">app.ui</a>
@@ -6073,6 +6285,7 @@ imports:
 imported by:
     <a href="#app.ui.widgets.drop_zone">app.ui.widgets.drop_zone</a>
  &#8226;   <a href="#app.ui.widgets.firmware_card">app.ui.widgets.firmware_card</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -6080,7 +6293,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.widgets.drop_zone"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/widgets/drop_zone.py" type="text/plain"><tt>app.ui.widgets.drop_zone</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/widgets/drop_zone.py" type="text/plain"><tt>app.ui.widgets.drop_zone</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
@@ -6092,8 +6305,10 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
+    <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
+ &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -6101,7 +6316,7 @@ imported by:
 
 <div class="node">
   <a name="app.ui.widgets.firmware_card"></a>
-  <a target="code" href="///C:/Users/Ilia/Desktop/FirmwareFinderV2/app/ui/widgets/firmware_card.py" type="text/plain"><tt>app.ui.widgets.firmware_card</tt></a>
+  <a target="code" href="///C:/Users/Ilia/Desktop/nc/app/ui/widgets/firmware_card.py" type="text/plain"><tt>app.ui.widgets.firmware_card</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#PySide6.QtCore">PySide6.QtCore</a>
@@ -6114,6 +6329,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
+ &#8226;   <a href="#main.py">main.py</a>
 
   </div>
 
@@ -9571,11 +9787,11 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.domain.models">app.domain.models</a>
+    <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
+ &#8226;   <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
- &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
  &#8226;   <a href="#packaging._tokenizer">packaging._tokenizer</a>
  &#8226;   <a href="#pprint">pprint</a>
  &#8226;   <a href="#py7zr.py7zr">py7zr.py7zr</a>
@@ -9601,11 +9817,14 @@ imports:
 imported by:
     <a href="#PIL._imagingcms">PIL._imagingcms</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
  &#8226;   <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
+ &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
@@ -13043,6 +13262,7 @@ imported by:
  &#8226;   <a href="#PySide6.QtNetwork">PySide6.QtNetwork</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#asyncio.constants">asyncio.constants</a>
  &#8226;   <a href="#asyncio.locks">asyncio.locks</a>
@@ -13239,6 +13459,7 @@ imported by:
  &#8226;   <a href="#PIL.ImageMode">PIL.ImageMode</a>
  &#8226;   <a href="#PIL.ImageOps">PIL.ImageOps</a>
  &#8226;   <a href="#PIL.PsdImagePlugin">PIL.PsdImagePlugin</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
  &#8226;   <a href="#asyncio.format_helpers">asyncio.format_helpers</a>
  &#8226;   <a href="#asyncio.runners">asyncio.runners</a>
  &#8226;   <a href="#asyncio.selector_events">asyncio.selector_events</a>
@@ -15124,8 +15345,9 @@ imports:
 imported by:
     <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.services.config_service">app.services.config_service</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
+ &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
- &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
  &#8226;   <a href="#charset_normalizer.models">charset_normalizer.models</a>
  &#8226;   <a href="#importlib_metadata">importlib_metadata</a>
  &#8226;   <a href="#json.decoder">json.decoder</a>
@@ -15301,6 +15523,8 @@ imported by:
  &#8226;   <a href="#PIL.PcxImagePlugin">PIL.PcxImagePlugin</a>
  &#8226;   <a href="#PIL.PngImagePlugin">PIL.PngImagePlugin</a>
  &#8226;   <a href="#PIL.TiffImagePlugin">PIL.TiffImagePlugin</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
  &#8226;   <a href="#asyncio.futures">asyncio.futures</a>
  &#8226;   <a href="#asyncio.log">asyncio.log</a>
  &#8226;   <a href="#charset_normalizer">charset_normalizer</a>
@@ -23340,9 +23564,12 @@ imported by:
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
  &#8226;   <a href="#app.services.config_service">app.services.config_service</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#app.ui.app">app.ui.app</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
  &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#app.ui.pages.templates_page">app.ui.pages.templates_page</a>
@@ -24011,6 +24238,7 @@ imported by:
  &#8226;   <a href="#app.infrastructure.archive">app.infrastructure.archive</a>
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#backports.zstd.zipfile._path">backports.zstd.zipfile._path</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
@@ -26721,13 +26949,14 @@ imported by:
  &#8226;   <a href="#_pydecimal">_pydecimal</a>
  &#8226;   <a href="#_sre">_sre</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
  &#8226;   <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
  &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
+ &#8226;   <a href="#app.services.second_disk_service">app.services.second_disk_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
- &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#backports.zstd.tarfile">backports.zstd.tarfile</a>
@@ -30380,6 +30609,7 @@ imported by:
  &#8226;   <a href="#PySide6.QtNetwork">PySide6.QtNetwork</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#shiboken6.Shiboken">shiboken6.Shiboken</a>
 
   </div>
@@ -30403,6 +30633,7 @@ imported by:
  &#8226;   <a href="#PySide6.QtNetwork">PySide6.QtNetwork</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
  &#8226;   <a href="#PySide6.support">PySide6.support</a>
  &#8226;   <a href="#shiboken6">shiboken6</a>
  &#8226;   <a href="#shiboken6.Shiboken">shiboken6.Shiboken</a>
@@ -30463,9 +30694,13 @@ imported by:
     <a href="#PIL.EpsImagePlugin">PIL.EpsImagePlugin</a>
  &#8226;   <a href="#PIL.ImageShow">PIL.ImageShow</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
+ &#8226;   <a href="#app.ui.pages.params_page">app.ui.pages.params_page</a>
  &#8226;   <a href="#app.ui.pages.search_page">app.ui.pages.search_page</a>
+ &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
+ &#8226;   <a href="#app.ui.pages.upload_page">app.ui.pages.upload_page</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#backports.zstd._shutil">backports.zstd._shutil</a>
  &#8226;   <a href="#backports.zstd.tarfile">backports.zstd.tarfile</a>
@@ -31916,6 +32151,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_distutils_hack">_distutils_hack</a>
+ &#8226;   <a href="#app.ui.pages.settings_page">app.ui.pages.settings_page</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.base_tasks">asyncio.base_tasks</a>
  &#8226;   <a href="#asyncio.format_helpers">asyncio.format_helpers</a>
@@ -32190,10 +32426,14 @@ imported by:
  &#8226;   <a href="#PySide6.QtGui">PySide6.QtGui</a>
  &#8226;   <a href="#PySide6.QtNetwork">PySide6.QtNetwork</a>
  &#8226;   <a href="#PySide6.QtSvg">PySide6.QtSvg</a>
+ &#8226;   <a href="#PySide6.QtSvgWidgets">PySide6.QtSvgWidgets</a>
  &#8226;   <a href="#PySide6.QtWidgets">PySide6.QtWidgets</a>
+ &#8226;   <a href="#PySide6.QtXml">PySide6.QtXml</a>
+ &#8226;   <a href="#app.domain.hierarchy">app.domain.hierarchy</a>
  &#8226;   <a href="#app.domain.models">app.domain.models</a>
  &#8226;   <a href="#app.infrastructure.database">app.infrastructure.database</a>
  &#8226;   <a href="#app.infrastructure.filesystem">app.infrastructure.filesystem</a>
+ &#8226;   <a href="#app.services.hierarchy_service">app.services.hierarchy_service</a>
  &#8226;   <a href="#app.services.search_service">app.services.search_service</a>
  &#8226;   <a href="#app.services.sync_service">app.services.sync_service</a>
  &#8226;   <a href="#app.services.upload_service">app.services.upload_service</a>
