@@ -43,7 +43,6 @@ class SettingsPage(QWidget):
         tab_defs = [
             ('Общие',          self._build_general_tab),
             ('Иерархия',       self._build_hierarchy_tab),
-            ('Производители',  self._build_manufacturers_tab),
             ('Быстрый доступ', self._build_quickapps_tab),
         ]
 
@@ -390,41 +389,6 @@ class SettingsPage(QWidget):
         layout.addStretch()
         return w
 
-    # ═══════════════════════════ MANUFACTURERS TAB ════════════════════════════
-
-    def _build_manufacturers_tab(self) -> QWidget:
-        w = QWidget()
-        layout = QVBoxLayout(w)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
-
-        lbl = QLabel('Производители параметров (ПЧ / УПП)')
-        lbl.setObjectName('section-label')
-        layout.addWidget(lbl)
-
-        self._manuf_list = QListWidget()
-        self._manuf_list.setFixedHeight(260)
-        layout.addWidget(self._manuf_list)
-
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(6)
-        add_btn = QPushButton('Добавить')
-        add_btn.setObjectName('secondary')
-        add_btn.setFixedHeight(34)
-        add_btn.clicked.connect(self._add_manufacturer)
-        btn_row.addWidget(add_btn)
-        del_btn = QPushButton('Удалить')
-        del_btn.setObjectName('secondary')
-        del_btn.setFixedHeight(34)
-        del_btn.clicked.connect(self._delete_manufacturer)
-        btn_row.addWidget(del_btn)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
-        layout.addStretch()
-
-        self._load_manufacturers()
-        return w
-
     def _load_manufacturers(self):
         if not hasattr(self, '_manuf_list'):
             return
@@ -582,6 +546,23 @@ class SettingsPage(QWidget):
         ctrl_lay.addLayout(ctrl_btns)
         layout.addWidget(ctrl_box)
 
+        # ── Manufacturers ─────────────────────────────────────────────────────
+        manuf_box = QGroupBox('Производители параметров (ПЧ / УПП)')
+        manuf_lay = QVBoxLayout(manuf_box)
+        self._manuf_list = QListWidget()
+        self._manuf_list.setFixedHeight(140)
+        manuf_lay.addWidget(self._manuf_list)
+        manuf_btns = QHBoxLayout()
+        for label, slot in [('Добавить', self._add_manufacturer),
+                             ('Удалить',  self._delete_manufacturer)]:
+            btn = QPushButton(label)
+            btn.setObjectName('secondary')
+            btn.clicked.connect(slot)
+            manuf_btns.addWidget(btn)
+        manuf_btns.addStretch()
+        manuf_lay.addLayout(manuf_btns)
+        layout.addWidget(manuf_box)
+
         # ── Rebuild button ────────────────────────────────────────────────────
         rebuild_btn = QPushButton('Пересоздать структуру диска')
         rebuild_btn.setIcon(make_icon('folder', ICON_ON_ACCENT, 14))
@@ -625,6 +606,9 @@ class SettingsPage(QWidget):
             item = QListWidgetItem(c.name)
             item.setData(Qt.UserRole, c)
             self._ctrl_hier_list.addItem(item)
+
+        # Manufacturers
+        self._load_manufacturers()
 
     def _auto_rebuild(self, deleted_folder: str = ''):
         """Rebuild folder structure on disk after hierarchy changes."""
@@ -769,10 +753,10 @@ class SettingsPage(QWidget):
 
     def _scan_unknown_files(self):
         import shutil as _shutil
-        from app.domain.hierarchy import UNKNOWN_FW_FOLDER
-        from app.services.hierarchy_service import FOLDER_PO
+        from app.domain.hierarchy import UNKNOWN_FW_FOLDER, UNKNOWN_PARAMS_FOLDER
+        from app.services.hierarchy_service import FOLDER_PO, FOLDER_PARAMS
         from PySide6.QtWidgets import (QDialog, QVBoxLayout, QListWidget,
-                                        QListWidgetItem, QHBoxLayout, QAbstractItemView)
+                                        QListWidgetItem, QHBoxLayout)
 
         root = self._mw.cfg.root_path()
         if not root or not os.path.isdir(root):
@@ -781,46 +765,96 @@ class SettingsPage(QWidget):
 
         unknown = self._mw.hierarchy_svc.scan_unknown_files(root)
         if not unknown:
-            QMessageBox.information(self, 'Сканирование', 'Неизвестных файлов не найдено.')
+            QMessageBox.information(self, 'Сканирование', 'Неизвестных файлов/папок не найдено.')
             return
 
         dlg = QDialog(self)
-        dlg.setWindowTitle(f'Неизвестные файлы ({len(unknown)})')
-        dlg.setMinimumSize(600, 400)
+        dlg.setWindowTitle(f'Неизвестные файлы/папки ({len(unknown)})')
+        dlg.setMinimumSize(700, 460)
         lay = QVBoxLayout(dlg)
 
+        hint = QLabel('✓ Отмеченные → перенести в «Неизвестное».  '
+                      '✗ Снятые отметки → удалить безвозвратно.')
+        hint.setObjectName('hint')
+        lay.addWidget(hint)
+
         lst = QListWidget()
-        lst.setSelectionMode(QAbstractItemView.MultiSelection)
         for item_data in unknown:
-            text = f"[{item_data['type']}]  {item_data['name']}  —  {item_data['path']}"
+            section = item_data.get('section', 'ПО')
+            text = f"[{section}]  {item_data['name']}  —  {item_data['path']}"
             item = QListWidgetItem(text)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Checked)
             item.setData(Qt.UserRole, item_data)
             lst.addItem(item)
         lay.addWidget(lst)
 
+        sel_row = QHBoxLayout()
+
+        def _check_all():
+            for i in range(lst.count()):
+                lst.item(i).setCheckState(Qt.Checked)
+
+        def _uncheck_all():
+            for i in range(lst.count()):
+                lst.item(i).setCheckState(Qt.Unchecked)
+
+        sel_all_btn = QPushButton('Выбрать все')
+        sel_all_btn.setObjectName('secondary')
+        sel_all_btn.setFixedHeight(30)
+        sel_all_btn.clicked.connect(_check_all)
+        sel_row.addWidget(sel_all_btn)
+        unsel_btn = QPushButton('Снять все')
+        unsel_btn.setObjectName('secondary')
+        unsel_btn.setFixedHeight(30)
+        unsel_btn.clicked.connect(_uncheck_all)
+        sel_row.addWidget(unsel_btn)
+        sel_row.addStretch()
+        lay.addLayout(sel_row)
+
         btn_row = QHBoxLayout()
 
-        def _move_selected():
-            unknown_folder = os.path.join(root, FOLDER_PO, UNKNOWN_FW_FOLDER)
-            os.makedirs(unknown_folder, exist_ok=True)
-            moved = 0
+        def _execute():
+            po_unknown     = os.path.join(root, FOLDER_PO, UNKNOWN_FW_FOLDER)
+            params_unknown = os.path.join(root, FOLDER_PARAMS, UNKNOWN_PARAMS_FOLDER)
+            moved, deleted = 0, 0
+            errs = []
             for i in range(lst.count()):
                 item = lst.item(i)
-                if item.isSelected():
-                    d = item.data(Qt.UserRole)
+                d = item.data(Qt.UserRole)
+                unk_dir = po_unknown if d.get('section') == 'ПО' else params_unknown
+                if item.checkState() == Qt.Checked:
                     try:
-                        _shutil.move(d['path'], os.path.join(unknown_folder, d['name']))
+                        os.makedirs(unk_dir, exist_ok=True)
+                        dst = os.path.join(unk_dir, d['name'])
+                        j = 1
+                        while os.path.exists(dst):
+                            dst = os.path.join(unk_dir, f"{d['name']}_{j}")
+                            j += 1
+                        _shutil.move(d['path'], dst)
                         moved += 1
                     except Exception as e:
-                        QMessageBox.warning(dlg, 'Ошибка', f'Не удалось переместить {d["name"]}: {e}')
+                        errs.append(f'Перенос {d["name"]}: {e}')
+                else:
+                    try:
+                        if os.path.isdir(d['path']):
+                            _shutil.rmtree(d['path'])
+                        else:
+                            os.remove(d['path'])
+                        deleted += 1
+                    except Exception as e:
+                        errs.append(f'Удаление {d["name"]}: {e}')
+            if errs:
+                QMessageBox.warning(dlg, 'Ошибки', '\n'.join(errs[:10]))
             dlg.accept()
-            self._mw.show_status(f'Перемещено: {moved}')
+            self._mw.show_status(f'Перенесено: {moved}, удалено: {deleted}')
 
-        move_btn = QPushButton(f'Переместить в {UNKNOWN_FW_FOLDER}/')
-        move_btn.clicked.connect(_move_selected)
-        btn_row.addWidget(move_btn)
+        apply_btn = QPushButton('Применить (перенести ✓ / удалить ✗)')
+        apply_btn.clicked.connect(_execute)
+        btn_row.addWidget(apply_btn)
         btn_row.addStretch()
         close_btn = QPushButton('Закрыть')
+        close_btn.setObjectName('secondary')
         close_btn.clicked.connect(dlg.accept)
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)

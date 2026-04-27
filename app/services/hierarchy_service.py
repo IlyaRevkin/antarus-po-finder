@@ -265,41 +265,83 @@ class HierarchyService:
             log.warning(f'collect_unknowns: failed to move {src!r}: {e}')
 
     def scan_unknown_files(self, root_path: str) -> list[dict]:
-        """Find files that don't fit the hierarchy structure."""
+        """Find files/folders that don't fit the hierarchy (both ПО and Параметры)."""
         if not root_path or not os.path.isdir(root_path):
             return []
 
-        po_root = os.path.join(root_path, FOLDER_PO)
-        if not os.path.isdir(po_root):
-            return []
-
-        groups      = {g.name for g in self._db.get_all_equipment_groups()}
-        subtypes    = self._db.get_all_equipment_subtypes()
-        sub_names   = {s.name for s in subtypes if s.name != '—'}
-        controllers = {c.name for c in self._db.get_all_controller_models()}
-        known_eq    = groups | {UNKNOWN_FW_FOLDER}
-
         unknown = []
-        try:
-            for entry in os.scandir(po_root):
-                if not entry.is_dir():
-                    unknown.append({'path': entry.path, 'name': entry.name, 'type': 'file'})
-                    continue
-                if entry.name not in known_eq:
-                    unknown.append({'path': entry.path, 'name': entry.name, 'type': 'unknown_folder'})
-                    continue
-                # Inside group folder: sub or ctrl
-                for sub_entry in os.scandir(entry.path):
-                    if sub_entry.is_file():
-                        unknown.append({'path': sub_entry.path, 'name': sub_entry.name, 'type': 'orphan_file'})
-                    elif sub_entry.name in sub_names:
-                        pass  # valid subtype folder
-                    elif sub_entry.name in controllers | {OPC_FOLDER, INSTRUCTIONS_FOLDER, IO_MAP_FOLDER}:
-                        pass  # valid controller/special folder
-                    else:
-                        unknown.append({'path': sub_entry.path, 'name': sub_entry.name, 'type': 'unknown_folder'})
-        except (OSError, PermissionError) as e:
-            log.warning(f'scan_unknown_files error: {e}')
+
+        # ── ПО ───────────────────────────────────────────────────────────────
+        po_root = os.path.join(root_path, FOLDER_PO)
+        if os.path.isdir(po_root):
+            groups_list  = self._db.get_all_equipment_groups()
+            groups       = {g.name for g in groups_list}
+            subtypes     = self._db.get_all_equipment_subtypes()
+            sub_names    = {s.name for s in subtypes if s.name != '—'}
+            controllers  = {c.name for c in self._db.get_all_controller_models()}
+            known_eq     = groups | {UNKNOWN_FW_FOLDER}
+
+            try:
+                for entry in os.scandir(po_root):
+                    if not entry.is_dir():
+                        unknown.append({'path': entry.path, 'name': entry.name,
+                                        'type': 'file', 'section': 'ПО'})
+                        continue
+                    if entry.name not in known_eq:
+                        unknown.append({'path': entry.path, 'name': entry.name,
+                                        'type': 'unknown_folder', 'section': 'ПО'})
+                        continue
+                    for sub_entry in os.scandir(entry.path):
+                        if sub_entry.is_file():
+                            unknown.append({'path': sub_entry.path, 'name': sub_entry.name,
+                                            'type': 'orphan_file', 'section': 'ПО'})
+                        elif sub_entry.name not in (
+                            sub_names | controllers | {OPC_FOLDER, INSTRUCTIONS_FOLDER, IO_MAP_FOLDER}
+                        ):
+                            unknown.append({'path': sub_entry.path, 'name': sub_entry.name,
+                                            'type': 'unknown_folder', 'section': 'ПО'})
+            except (OSError, PermissionError) as e:
+                log.warning(f'scan_unknown_files ПО error: {e}')
+
+        # ── Параметры ────────────────────────────────────────────────────────
+        params_root = os.path.join(root_path, FOLDER_PARAMS)
+        if os.path.isdir(params_root):
+            groups_list   = self._db.get_all_equipment_groups()
+            group_names   = {g.name for g in groups_list}
+            group_id_map  = {g.name: g.id for g in groups_list}
+            subtypes      = self._db.get_all_equipment_subtypes()
+            manufacturers = set(self._db.get_param_manufacturers())
+
+            subs_by_group: dict[int, list] = {}
+            for s in subtypes:
+                subs_by_group.setdefault(s.group_id, []).append(s)
+
+            try:
+                for entry in os.scandir(params_root):
+                    if entry.name == UNKNOWN_PARAMS_FOLDER:
+                        continue
+                    if not entry.is_dir() or entry.name not in group_names:
+                        unknown.append({'path': entry.path, 'name': entry.name,
+                                        'type': 'unknown_folder', 'section': 'Параметры'})
+                        continue
+
+                    grp_subs = subs_by_group.get(group_id_map[entry.name], [])
+                    real_sub_names = {s.name for s in grp_subs if s.name != '—'}
+                    has_dash = any(s.name == '—' for s in grp_subs)
+                    valid_at_grp = real_sub_names | (manufacturers if has_dash else set())
+
+                    for sub_entry in os.scandir(entry.path):
+                        if sub_entry.name not in valid_at_grp:
+                            unknown.append({'path': sub_entry.path, 'name': sub_entry.name,
+                                            'type': 'unknown_folder', 'section': 'Параметры'})
+                            continue
+                        if sub_entry.name in real_sub_names and sub_entry.is_dir():
+                            for mfr_entry in os.scandir(sub_entry.path):
+                                if mfr_entry.name not in manufacturers:
+                                    unknown.append({'path': mfr_entry.path, 'name': mfr_entry.name,
+                                                    'type': 'unknown_folder', 'section': 'Параметры'})
+            except (OSError, PermissionError) as e:
+                log.warning(f'scan_unknown_files Параметры error: {e}')
 
         return unknown
 
