@@ -466,10 +466,20 @@ class UploadPage(QWidget):
         try:
             os.makedirs(dst_folder, exist_ok=True)
 
-            ext = os.path.splitext(self._src_path)[1]
-            dst_name = build_firmware_filename(
-                sub.folder_name, ctrl.name, fwv, ext, req_num)
-            shutil.copy2(self._src_path, os.path.join(dst_folder, dst_name))
+            if os.path.isdir(self._src_path):
+                # Folder: copy all contents into dst_folder
+                for entry in os.scandir(self._src_path):
+                    dst_entry = os.path.join(dst_folder, entry.name)
+                    if entry.is_dir():
+                        shutil.copytree(entry.path, dst_entry, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(entry.path, dst_entry)
+                dst_name = os.path.basename(self._src_path)
+            else:
+                ext = os.path.splitext(self._src_path)[1]
+                dst_name = build_firmware_filename(
+                    sub.folder_name, ctrl.name, fwv, ext, req_num)
+                shutil.copy2(self._src_path, os.path.join(dst_folder, dst_name))
 
             desc = self._desc_edit.toPlainText().strip()
             self._write_changelog(dst_folder, fwv, launch_types, desc)
