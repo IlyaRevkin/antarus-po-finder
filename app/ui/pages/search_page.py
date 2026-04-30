@@ -482,7 +482,11 @@ class SearchPage(QWidget):
             QMessageBox.warning(self, 'Ошибка', 'Папка прошивки не задана в правиле.')
             return
         # firmware_dir may be an absolute local path or relative to root_path
-        if os.path.isabs(rule.firmware_dir) and os.path.isdir(rule.firmware_dir):
+        if os.path.isabs(rule.firmware_dir):
+            if not os.path.isdir(rule.firmware_dir):
+                QMessageBox.warning(self, 'Ошибка',
+                    f'Папка прошивки недоступна.\nПроверьте подключение диска:\n{rule.firmware_dir}')
+                return
             src = rule.firmware_dir
         else:
             root = self._mw.cfg.root_path()
@@ -494,29 +498,33 @@ class SearchPage(QWidget):
             QMessageBox.warning(self, 'Ошибка', f'Папка не найдена:\n{src}')
             return
         local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
-        dst = os.path.join(LOCAL_FW, local_dir)
+        # For hierarchy results: firmware_dir is the version folder — store under version subfolder
+        # so _has_local / _open_fw_filtered can find it correctly.
+        is_hierarchy = hasattr(rule, '_fw_subtype_id')
+        if is_hierarchy and ver:
+            dst = os.path.join(LOCAL_FW, local_dir, str(ver.version))
+        else:
+            dst = os.path.join(LOCAL_FW, local_dir)
         try:
             copy_tree(src, dst)
-            # For hierarchy results: firmware_dir is the version folder (absolute path).
             # Also copy sibling Карта ВВ / Инструкция from the controller folder.
-            if hasattr(result.rule, '_fw_subtype_id'):
+            if is_hierarchy:
                 ctrl_folder = os.path.dirname(src)
                 for folder_name in ['Карта ВВ', 'Инструкция']:
                     src_extra = os.path.join(ctrl_folder, folder_name)
                     if os.path.isdir(src_extra):
-                        dst_extra = os.path.join(dst, folder_name)
+                        dst_extra = os.path.join(os.path.join(LOCAL_FW, local_dir), folder_name)
                         shutil.copytree(src_extra, dst_extra, dirs_exist_ok=True)
-            # Mark rule as locally synced so background sync keeps it updated
-            if not rule.local_synced:
+            # Mark rule as locally synced — only for Rule dataclasses, not _HierarchyRule
+            import dataclasses as _dc_mod
+            if not rule.local_synced and _dc_mod.is_dataclass(rule):
                 self._mw.db.upsert_rule(_dc(rule, local_synced=True))
             self._mw.show_status(f'Скопировано: {rule.name}')
             # Open the latest version immediately
-            if ver:
-                ver_dir = os.path.join(dst, str(ver.version))
-                fw = self._find_fw_file(ver_dir) if os.path.isdir(ver_dir) else None
-                if fw:
-                    os.startfile(fw)
-                    return
+            fw = self._find_fw_file(dst) if os.path.isdir(dst) else None
+            if fw:
+                os.startfile(fw)
+                return
             os.startfile(dst)
         except Exception as e:
             QMessageBox.critical(self, 'Ошибка', str(e))
