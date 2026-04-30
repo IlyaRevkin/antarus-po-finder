@@ -207,6 +207,25 @@ class Database:
         # Reason: groups like НГР always have real subtypes; the '—' entry
         # caused controllers to appear directly under the group folder,
         # mixed with subtype folders.
+        # Clear FK references first to avoid constraint failure.
+        self._conn.execute("""
+            UPDATE fw_versions SET subtype_id = NULL
+            WHERE subtype_id IN (
+                SELECT id FROM equipment_subtypes
+                WHERE name = '—' AND group_id IN (
+                    SELECT DISTINCT group_id FROM equipment_subtypes WHERE name != '—'
+                )
+            )
+        """)
+        self._conn.execute("""
+            UPDATE param_files SET subtype_id = NULL
+            WHERE subtype_id IN (
+                SELECT id FROM equipment_subtypes
+                WHERE name = '—' AND group_id IN (
+                    SELECT DISTINCT group_id FROM equipment_subtypes WHERE name != '—'
+                )
+            )
+        """)
         self._conn.execute("""
             DELETE FROM equipment_subtypes
             WHERE name = '—' AND group_id IN (
