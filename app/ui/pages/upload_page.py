@@ -485,16 +485,25 @@ class UploadPage(QWidget):
             self._write_changelog(dst_folder, fwv, launch_types, desc)
 
             io_map_src = self._io_map_input.text().strip()
-            io_map_dst = ''
+            io_map_stored = ''
             if io_map_src:
-                io_map_dst = hs.io_map_path(root_path, group.name, sub.name, ctrl.name)
-                self._copy_to_folder(io_map_src, io_map_dst)
+                io_dst_folder = hs.io_map_path(root_path, group.name, sub.name, ctrl.name)
+                self._copy_to_folder(io_map_src, io_dst_folder)
+                # Store destination path so sync can find the file on the disk
+                if os.path.isfile(io_map_src):
+                    io_map_stored = os.path.join(io_dst_folder, os.path.basename(io_map_src))
+                else:
+                    io_map_stored = io_dst_folder
 
             instr_src = self._instructions_input.text().strip()
-            instr_dst = ''
+            instr_stored = ''
             if instr_src:
-                instr_dst = hs.instr_path(root_path, group.name, sub.name, ctrl.name)
-                self._copy_to_folder(instr_src, instr_dst)
+                instr_dst_folder = hs.instr_path(root_path, group.name, sub.name, ctrl.name)
+                self._copy_to_folder(instr_src, instr_dst_folder)
+                if os.path.isfile(instr_src):
+                    instr_stored = os.path.join(instr_dst_folder, os.path.basename(instr_src))
+                else:
+                    instr_stored = instr_dst_folder
 
         except OSError as e:
             QMessageBox.critical(self, 'Ошибка файла', str(e))
@@ -515,8 +524,8 @@ class UploadPage(QWidget):
             'description':      desc,
             'changelog':        '',
             'launch_types':     launch_types,
-            'io_map_path':      io_map_dst,
-            'instructions_path': instr_dst,
+            'io_map_path':      io_map_stored,
+            'instructions_path': instr_stored,
             'is_opc':           is_opc,
             'request_num':      req_num,
         })

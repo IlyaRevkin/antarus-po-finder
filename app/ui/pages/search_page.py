@@ -390,9 +390,6 @@ class SearchPage(QWidget):
                 has_local=self._has_local(res.rule),
                 has_any_local=self._has_any_local(res.rule),
                 has_params=has_params,
-                has_hmi=self._has_hmi(res.rule),
-                has_map=self._has_io_map(res.rule),
-                has_instructions=self._has_instructions_file(res.rule),
             )
             card.open_requested.connect(self._open_fw)
             card.open_plc_requested.connect(self._open_plc)
@@ -474,59 +471,59 @@ class SearchPage(QWidget):
 
     def _download_fw(self, result: SearchResult):
         from app.infrastructure.filesystem import copy_tree
-        from app.services.config_service import LOCAL_FW
+        from app.services.config_service import LOCAL_FW, LOCAL_TEMPLATES
+        from app.domain.models import Rule as _RuleClass
         from dataclasses import replace as _dc
         import re
-        import shutil
+        import shutil as _shutil
         rule = result.rule
         ver  = result.latest_version
-        if not rule.firmware_dir:
-            QMessageBox.warning(self, 'Ошибка', 'Папка прошивки не задана в правиле.')
+        root = self._mw.cfg.root_path()
+        if not root or not rule.firmware_dir:
+            QMessageBox.warning(self, 'Ошибка', 'Путь к диску или папка прошивки не заданы.')
             return
-        # firmware_dir may be an absolute local path or relative to root_path
-        if os.path.isabs(rule.firmware_dir):
-            if not os.path.isdir(rule.firmware_dir):
-                QMessageBox.warning(self, 'Ошибка',
-                    f'Папка прошивки недоступна.\nПроверьте подключение диска:\n{rule.firmware_dir}')
-                return
+        src = os.path.join(root, rule.firmware_dir)
+        # firmware_dir for hierarchy rules is already absolute — use as-is if exists
+        if not os.path.isdir(src) and os.path.isabs(rule.firmware_dir):
             src = rule.firmware_dir
-        else:
-            root = self._mw.cfg.root_path()
-            if not root:
-                QMessageBox.warning(self, 'Ошибка', 'Путь к диску не задан в настройках.')
-                return
-            src = os.path.join(root, rule.firmware_dir)
         if not os.path.isdir(src):
-            QMessageBox.warning(self, 'Ошибка', f'Папка не найдена:\n{src}')
+            QMessageBox.warning(self, 'Ошибка', f'Папка не найдена на диске:\n{src}')
             return
         local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
-        # For hierarchy results: firmware_dir is the version folder — store under version subfolder
-        # so _has_local / _open_fw_filtered can find it correctly.
-        is_hierarchy = hasattr(rule, '_fw_subtype_id')
-        if is_hierarchy and ver:
-            dst = os.path.join(LOCAL_FW, local_dir, str(ver.version))
-        else:
-            dst = os.path.join(LOCAL_FW, local_dir)
+        dst = os.path.join(LOCAL_FW, local_dir)
         try:
             copy_tree(src, dst)
-            # Also copy sibling Карта ВВ / Инструкция from the controller folder.
-            if is_hierarchy:
-                ctrl_folder = os.path.dirname(src)
-                for folder_name in ['Карта ВВ', 'Инструкция']:
-                    src_extra = os.path.join(ctrl_folder, folder_name)
-                    if os.path.isdir(src_extra):
-                        dst_extra = os.path.join(os.path.join(LOCAL_FW, local_dir), folder_name)
-                        shutil.copytree(src_extra, dst_extra, dirs_exist_ok=True)
-            # Mark rule as locally synced — only for Rule dataclasses, not _HierarchyRule
-            import dataclasses as _dc_mod
-            if not rule.local_synced and _dc_mod.is_dataclass(rule):
+            # Mark rule as locally synced (only for legacy Rule dataclass)
+            if not rule.local_synced and isinstance(rule, _RuleClass):
                 self._mw.db.upsert_rule(_dc(rule, local_synced=True))
+            # Copy io_map and instructions to LOCAL_TEMPLATES for offline use
+            os.makedirs(LOCAL_TEMPLATES, exist_ok=True)
+            for asset_path in [
+                getattr(rule, 'io_map_path', ''),
+                getattr(rule, 'instructions_path', ''),
+            ]:
+                if not asset_path:
+                    continue
+                ap = asset_path
+                if not os.path.exists(ap):
+                    ap = os.path.join(root, asset_path)
+                if not os.path.exists(ap):
+                    continue
+                if os.path.isfile(ap):
+                    _shutil.copy2(ap, os.path.join(LOCAL_TEMPLATES, os.path.basename(ap)))
+                elif os.path.isdir(ap):
+                    for entry in os.scandir(ap):
+                        if entry.is_file():
+                            _shutil.copy2(entry.path,
+                                          os.path.join(LOCAL_TEMPLATES, entry.name))
             self._mw.show_status(f'Скопировано: {rule.name}')
             # Open the latest version immediately
-            fw = self._find_fw_file(dst) if os.path.isdir(dst) else None
-            if fw:
-                os.startfile(fw)
-                return
+            if ver:
+                ver_dir = os.path.join(dst, str(ver.version))
+                fw = self._find_fw_file(ver_dir) if os.path.isdir(ver_dir) else None
+                if fw:
+                    os.startfile(fw)
+                    return
             os.startfile(dst)
         except Exception as e:
             QMessageBox.critical(self, 'Ошибка', str(e))
@@ -564,8 +561,6 @@ class SearchPage(QWidget):
 
     def _open_map(self, result: SearchResult):
         path = self._resolve_rule_path(result.rule.io_map_path)
-        if not path:
-            path = self._find_map_or_instr(result.rule, 'Карта ВВ')
         if not path:
             QMessageBox.information(self, 'Карта in/out',
                 f'Файл карты не найден.\nПуть: {result.rule.io_map_path}')
@@ -733,54 +728,6 @@ class SearchPage(QWidget):
         path = os.path.join(LOCAL_FW, local_dir)
         return os.path.isdir(path) and bool(os.listdir(path))
 
-    def _has_hmi(self, rule) -> bool:
-        """True if the firmware folder (local or disk) contains HMI files."""
-        import re
-        from app.services.config_service import LOCAL_FW
-        local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
-        local_root = os.path.join(LOCAL_FW, local_dir)
-        if os.path.isdir(local_root):
-            if self._find_fw_file_by_exts(local_root, self._KINCO_HMI_EXTS):
-                return True
-        fw_dir = self._resolve_rule_path(rule.firmware_dir)
-        if fw_dir and os.path.isdir(fw_dir):
-            if self._find_fw_file_by_exts(fw_dir, self._KINCO_HMI_EXTS):
-                return True
-        return False
-
-    def _find_map_or_instr(self, rule, folder_name: str) -> str:
-        """Return path to local Карта ВВ / Инструкция folder (or disk hierarchy copy)."""
-        import re
-        from app.services.config_service import LOCAL_FW
-        local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
-        local_folder = os.path.join(LOCAL_FW, local_dir, folder_name)
-        if os.path.isdir(local_folder):
-            try:
-                if any(e.is_file() for e in os.scandir(local_folder)):
-                    return local_folder
-            except Exception:
-                pass
-        fw_dir = self._resolve_rule_path(getattr(rule, 'firmware_dir', ''))
-        if fw_dir and os.path.isdir(fw_dir):
-            disk_folder = os.path.join(os.path.dirname(fw_dir), folder_name)
-            if os.path.isdir(disk_folder):
-                try:
-                    if any(e.is_file() for e in os.scandir(disk_folder)):
-                        return disk_folder
-                except Exception:
-                    pass
-        return ''
-
-    def _has_io_map(self, rule) -> bool:
-        if rule.io_map_path and self._resolve_rule_path(rule.io_map_path):
-            return True
-        return bool(self._find_map_or_instr(rule, 'Карта ВВ'))
-
-    def _has_instructions_file(self, rule) -> bool:
-        if rule.instructions_path and self._resolve_rule_path(rule.instructions_path):
-            return True
-        return bool(self._find_map_or_instr(rule, 'Инструкция'))
-
     _KINCO_PLC_EXTS = frozenset({'.kpr', '.kpj', '.kpro', '.cpj', '.prj'})
     _KINCO_HMI_EXTS = frozenset({'.dpj', '.emt', '.emtp', '.emsln'})
 
@@ -796,32 +743,11 @@ class SearchPage(QWidget):
         rule = result.rule
         ver  = result.latest_version
         local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
-        # 1. Latest version in LOCAL_FW
         if ver:
             ver_dir = os.path.join(LOCAL_FW, local_dir, str(ver.version))
             if os.path.isdir(ver_dir):
                 fw = self._find_fw_file_by_exts(ver_dir, exts)
                 os.startfile(fw if fw else ver_dir)
-                return
-        # 2. Any version in LOCAL_FW
-        local_root = os.path.join(LOCAL_FW, local_dir)
-        if os.path.isdir(local_root):
-            subdirs = sorted(
-                (d for d in os.listdir(local_root)
-                 if os.path.isdir(os.path.join(local_root, d))),
-                reverse=True,
-            )
-            for sd in subdirs:
-                fw = self._find_fw_file_by_exts(os.path.join(local_root, sd), exts)
-                if fw:
-                    os.startfile(fw)
-                    return
-        # 3. Absolute firmware_dir path on disk
-        fw_dir = self._resolve_rule_path(rule.firmware_dir)
-        if fw_dir and os.path.isdir(fw_dir):
-            fw = self._find_fw_file_by_exts(fw_dir, exts)
-            if fw:
-                os.startfile(fw)
                 return
         QMessageBox.information(self, f'Открыть {label}',
             'Прошивка не найдена локально.\nНажмите «Скачать» для копирования с сервера.')
@@ -898,8 +824,6 @@ class SearchPage(QWidget):
 
     def _open_instructions(self, result: SearchResult):
         path = self._resolve_rule_path(result.rule.instructions_path)
-        if not path:
-            path = self._find_map_or_instr(result.rule, 'Инструкция')
         if not path:
             QMessageBox.information(self, 'Инструкции',
                 f'Файл инструкций не найден.\nПуть: {result.rule.instructions_path}')
@@ -1161,36 +1085,34 @@ class SearchPage(QWidget):
         )
         from PySide6.QtCore import Qt
         from datetime import datetime as _dt
-        from types import SimpleNamespace as _NS
 
-        def _fw_dict_to_display(row: dict):
-            upload_str = row.get('upload_date', '')
-            try:
-                dt = _dt.strptime(upload_str, '%Y-%m-%d %H:%M:%S')
-            except Exception:
-                dt = None
+        rule = result.rule
+        sub_id  = getattr(rule, '_subtype_id', None)
+        ctrl_id = getattr(rule, '_controller_id', None)
 
-            class _V:
-                def __str__(self): return row.get('version_raw', '')
-            return _NS(
-                version=_V(),
-                controller=row.get('ctrl_name', ''),
-                description=row.get('description', '') or '',
-                changelog=row.get('changelog', '') or '',
-                local_path=row.get('local_path', '') or '',
-                disk_path=row.get('disk_path', '') or '',
-                upload_date=dt,
-            )
+        if sub_id is not None and ctrl_id is not None:
+            # Hierarchy result — read from fw_versions table
+            raw = self._mw.db.get_fw_versions_history(sub_id, ctrl_id)
 
-        if hasattr(result.rule, '_fw_subtype_id') and result.rule._fw_subtype_id is not None:
-            rows = self._mw.db.get_fw_versions_with_ctrl(
-                result.rule._fw_subtype_id,
-                result.rule._fw_controller_id,
-                include_archived=True,
-            )
-            versions = [_fw_dict_to_display(r) for r in rows]
+            class _Proxy:
+                def __init__(self, d: dict):
+                    class _V:
+                        def __str__(self_): return d.get('version_raw', '')
+                    self.version     = _V()
+                    upload_str = d.get('upload_date', '')
+                    try:
+                        self.upload_date = _dt.fromisoformat(upload_str) if upload_str else None
+                    except Exception:
+                        self.upload_date = None
+                    self.controller  = d.get('ctrl_name', '')
+                    self.description = d.get('description', '') or ''
+                    self.changelog   = d.get('changelog', '') or ''
+                    self.local_path  = d.get('local_path', '') or ''
+                    self.disk_path   = d.get('disk_path', '') or ''
+
+            versions = [_Proxy(d) for d in raw]
         else:
-            versions = self._mw.db.get_versions_for_rule(result.rule.name)
+            versions = self._mw.db.get_versions_for_rule(rule.name)
         dlg = QDialog(self)
         dlg.setWindowTitle(f'История версий — {result.rule.name}')
         dlg.setMinimumSize(700, 500)

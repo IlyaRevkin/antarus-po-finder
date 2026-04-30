@@ -207,25 +207,6 @@ class Database:
         # Reason: groups like НГР always have real subtypes; the '—' entry
         # caused controllers to appear directly under the group folder,
         # mixed with subtype folders.
-        # Clear FK references first to avoid constraint failure.
-        self._conn.execute("""
-            UPDATE fw_versions SET subtype_id = NULL
-            WHERE subtype_id IN (
-                SELECT id FROM equipment_subtypes
-                WHERE name = '—' AND group_id IN (
-                    SELECT DISTINCT group_id FROM equipment_subtypes WHERE name != '—'
-                )
-            )
-        """)
-        self._conn.execute("""
-            UPDATE param_files SET subtype_id = NULL
-            WHERE subtype_id IN (
-                SELECT id FROM equipment_subtypes
-                WHERE name = '—' AND group_id IN (
-                    SELECT DISTINCT group_id FROM equipment_subtypes WHERE name != '—'
-                )
-            )
-        """)
         self._conn.execute("""
             DELETE FROM equipment_subtypes
             WHERE name = '—' AND group_id IN (
@@ -409,27 +390,6 @@ class Database:
         d['launch_types'] = json.loads(d.get('launch_types') or '[]')
         return d
 
-    def get_fw_versions_with_ctrl(self, subtype_id: int, controller_id: int,
-                                  include_archived: bool = True) -> list[dict]:
-        """All fw_versions for (subtype, controller) with ctrl_name joined; newest first.
-        Also includes orphaned versions (subtype_id IS NULL) for the same controller,
-        to show history entries whose subtype was removed by a migration.
-        """
-        archived_clause = '' if include_archived else ' AND fv.archived=0'
-        rows = self._conn.execute(f'''
-            SELECT fv.*, cm.name AS ctrl_name
-            FROM fw_versions fv
-            JOIN controller_models cm ON fv.controller_id = cm.id
-            WHERE fv.controller_id=? AND (fv.subtype_id=? OR fv.subtype_id IS NULL){archived_clause}
-            ORDER BY fv.dt_str DESC, fv.upload_date DESC
-        ''', (controller_id, subtype_id)).fetchall()
-        result = []
-        for r in rows:
-            d = self._fw_row_to_dict(r)
-            d['ctrl_name'] = r['ctrl_name']
-            result.append(d)
-        return result
-
     def get_latest_fw_version(self, subtype_id: int,
                                controller_id: int) -> dict | None:
         versions = self.get_fw_versions(subtype_id, controller_id)
@@ -485,6 +445,27 @@ class Database:
                 seen[key] = dict(row)
 
         return list(seen.values())
+
+    def get_fw_versions_history(self, subtype_id: int, controller_id: int,
+                                include_archived: bool = False) -> list[dict]:
+        """Return all fw_versions for a subtype+controller combo, with ctrl_name joined."""
+        q = '''
+            SELECT fv.*, cm.name AS ctrl_name
+            FROM fw_versions fv
+            JOIN controller_models cm ON fv.controller_id = cm.id
+            WHERE fv.subtype_id=? AND fv.controller_id=?
+        '''
+        params: list = [subtype_id, controller_id]
+        if not include_archived:
+            q += ' AND fv.archived=0'
+        q += ' ORDER BY fv.dt_str DESC, fv.hw_version DESC, fv.sw_version DESC'
+        rows = self._conn.execute(q, params).fetchall()
+        result = []
+        for row in rows:
+            d = self._fw_row_to_dict(row)
+            d['ctrl_name'] = row['ctrl_name']
+            result.append(d)
+        return result
 
     def archive_fw_version(self, version_id: int):
         self._conn.execute('UPDATE fw_versions SET archived=1 WHERE id=?', (version_id,))

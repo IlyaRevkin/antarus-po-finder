@@ -66,10 +66,9 @@ class _HierarchyRule:
         self.param_pch_dir     = ''
         self.param_upp_dir     = ''
         self.notes_file        = ''
-        # For history lookup
-        self._fw_subtype_id    = row.get('subtype_id')
-        self._fw_controller_id = row.get('controller_id')
-        self._fw_ctrl_name     = ctrl
+        # Used for history lookup in fw_versions table
+        self._subtype_id    = row.get('subtype_id')
+        self._controller_id = row.get('controller_id')
 
 
 _SEPARATORS = re.compile(r'[,;\-/\\]+')
