@@ -29,12 +29,14 @@ class FirmwareCard(QFrame):
     history_requested      = Signal(object)
 
     def __init__(self, result: SearchResult, has_local: bool = False,
-                 has_any_local: bool = False, has_params: bool = False, parent=None):
+                 has_any_local: bool = False, has_params: bool = False,
+                 has_hmi: bool = False, parent=None):
         super().__init__(parent)
         self.result        = result
         self.has_local     = has_local      # latest version exists locally
         self.has_any_local = has_any_local  # any version exists locally (possibly outdated)
         self.has_params    = has_params
+        self.has_hmi       = has_hmi        # local folder contains HMI files
         self.setObjectName('card')
         self.setCursor(Qt.PointingHandCursor)
         self._build(result)
@@ -118,7 +120,7 @@ class FirmwareCard(QFrame):
             b.clicked.connect(slot)
             return b
 
-        if rule.firmware_type == 'plc_hmi':
+        if rule.firmware_type == 'plc_hmi' or self.has_hmi:
             btn_row.addWidget(_btn('Открыть ПЛК', lambda: self.open_plc_requested.emit(self.result), 'open'))
             btn_row.addWidget(_btn('Открыть HMI', lambda: self.open_hmi_requested.emit(self.result), 'open'))
         else:

@@ -390,6 +390,7 @@ class SearchPage(QWidget):
                 has_local=self._has_local(res.rule),
                 has_any_local=self._has_any_local(res.rule),
                 has_params=has_params,
+                has_hmi=self._has_hmi(res.rule),
             )
             card.open_requested.connect(self._open_fw)
             card.open_plc_requested.connect(self._open_plc)
@@ -476,13 +477,20 @@ class SearchPage(QWidget):
         import re
         rule = result.rule
         ver  = result.latest_version
-        root = self._mw.cfg.root_path()
-        if not root or not rule.firmware_dir:
-            QMessageBox.warning(self, 'Ошибка', 'Путь к диску или папка прошивки не заданы.')
+        if not rule.firmware_dir:
+            QMessageBox.warning(self, 'Ошибка', 'Папка прошивки не задана в правиле.')
             return
-        src = os.path.join(root, rule.firmware_dir)
+        # firmware_dir may be an absolute local path or relative to root_path
+        if os.path.isabs(rule.firmware_dir) and os.path.isdir(rule.firmware_dir):
+            src = rule.firmware_dir
+        else:
+            root = self._mw.cfg.root_path()
+            if not root:
+                QMessageBox.warning(self, 'Ошибка', 'Путь к диску не задан в настройках.')
+                return
+            src = os.path.join(root, rule.firmware_dir)
         if not os.path.isdir(src):
-            QMessageBox.warning(self, 'Ошибка', f'Папка не найдена на диске:\n{src}')
+            QMessageBox.warning(self, 'Ошибка', f'Папка не найдена:\n{src}')
             return
         local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
         dst = os.path.join(LOCAL_FW, local_dir)
@@ -703,6 +711,21 @@ class SearchPage(QWidget):
         path = os.path.join(LOCAL_FW, local_dir)
         return os.path.isdir(path) and bool(os.listdir(path))
 
+    def _has_hmi(self, rule) -> bool:
+        """True if the firmware folder (local or disk) contains HMI files."""
+        import re
+        from app.services.config_service import LOCAL_FW
+        local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
+        local_root = os.path.join(LOCAL_FW, local_dir)
+        if os.path.isdir(local_root):
+            if self._find_fw_file_by_exts(local_root, self._KINCO_HMI_EXTS):
+                return True
+        fw_dir = self._resolve_rule_path(rule.firmware_dir)
+        if fw_dir and os.path.isdir(fw_dir):
+            if self._find_fw_file_by_exts(fw_dir, self._KINCO_HMI_EXTS):
+                return True
+        return False
+
     _KINCO_PLC_EXTS = frozenset({'.kpr', '.kpj', '.kpro', '.cpj', '.prj'})
     _KINCO_HMI_EXTS = frozenset({'.dpj', '.emt', '.emtp', '.emsln'})
 
@@ -718,11 +741,32 @@ class SearchPage(QWidget):
         rule = result.rule
         ver  = result.latest_version
         local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
+        # 1. Latest version in LOCAL_FW
         if ver:
             ver_dir = os.path.join(LOCAL_FW, local_dir, str(ver.version))
             if os.path.isdir(ver_dir):
                 fw = self._find_fw_file_by_exts(ver_dir, exts)
                 os.startfile(fw if fw else ver_dir)
+                return
+        # 2. Any version in LOCAL_FW
+        local_root = os.path.join(LOCAL_FW, local_dir)
+        if os.path.isdir(local_root):
+            subdirs = sorted(
+                (d for d in os.listdir(local_root)
+                 if os.path.isdir(os.path.join(local_root, d))),
+                reverse=True,
+            )
+            for sd in subdirs:
+                fw = self._find_fw_file_by_exts(os.path.join(local_root, sd), exts)
+                if fw:
+                    os.startfile(fw)
+                    return
+        # 3. Absolute firmware_dir path on disk
+        fw_dir = self._resolve_rule_path(rule.firmware_dir)
+        if fw_dir and os.path.isdir(fw_dir):
+            fw = self._find_fw_file_by_exts(fw_dir, exts)
+            if fw:
+                os.startfile(fw)
                 return
         QMessageBox.information(self, f'Открыть {label}',
             'Прошивка не найдена локально.\nНажмите «Скачать» для копирования с сервера.')
