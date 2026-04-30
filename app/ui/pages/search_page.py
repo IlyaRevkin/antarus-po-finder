@@ -475,6 +475,7 @@ class SearchPage(QWidget):
         from app.services.config_service import LOCAL_FW
         from dataclasses import replace as _dc
         import re
+        import shutil
         rule = result.rule
         ver  = result.latest_version
         if not rule.firmware_dir:
@@ -496,6 +497,15 @@ class SearchPage(QWidget):
         dst = os.path.join(LOCAL_FW, local_dir)
         try:
             copy_tree(src, dst)
+            # For hierarchy results: firmware_dir is the version folder (absolute path).
+            # Also copy sibling Карта ВВ / Инструкция from the controller folder.
+            if hasattr(result.rule, '_fw_subtype_id'):
+                ctrl_folder = os.path.dirname(src)
+                for folder_name in ['Карта ВВ', 'Инструкция']:
+                    src_extra = os.path.join(ctrl_folder, folder_name)
+                    if os.path.isdir(src_extra):
+                        dst_extra = os.path.join(dst, folder_name)
+                        shutil.copytree(src_extra, dst_extra, dirs_exist_ok=True)
             # Mark rule as locally synced so background sync keeps it updated
             if not rule.local_synced:
                 self._mw.db.upsert_rule(_dc(rule, local_synced=True))
@@ -1103,7 +1113,37 @@ class SearchPage(QWidget):
             QHeaderView, QDialogButtonBox, QTextEdit, QLabel, QSplitter,
         )
         from PySide6.QtCore import Qt
-        versions = self._mw.db.get_versions_for_rule(result.rule.name)
+        from datetime import datetime as _dt
+        from types import SimpleNamespace as _NS
+
+        def _fw_dict_to_display(row: dict):
+            upload_str = row.get('upload_date', '')
+            try:
+                dt = _dt.strptime(upload_str, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                dt = None
+
+            class _V:
+                def __str__(self): return row.get('version_raw', '')
+            return _NS(
+                version=_V(),
+                controller=row.get('ctrl_name', ''),
+                description=row.get('description', '') or '',
+                changelog=row.get('changelog', '') or '',
+                local_path=row.get('local_path', '') or '',
+                disk_path=row.get('disk_path', '') or '',
+                upload_date=dt,
+            )
+
+        if hasattr(result.rule, '_fw_subtype_id') and result.rule._fw_subtype_id is not None:
+            rows = self._mw.db.get_fw_versions_with_ctrl(
+                result.rule._fw_subtype_id,
+                result.rule._fw_controller_id,
+                include_archived=True,
+            )
+            versions = [_fw_dict_to_display(r) for r in rows]
+        else:
+            versions = self._mw.db.get_versions_for_rule(result.rule.name)
         dlg = QDialog(self)
         dlg.setWindowTitle(f'История версий — {result.rule.name}')
         dlg.setMinimumSize(700, 500)

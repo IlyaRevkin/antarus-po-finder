@@ -409,6 +409,24 @@ class Database:
         d['launch_types'] = json.loads(d.get('launch_types') or '[]')
         return d
 
+    def get_fw_versions_with_ctrl(self, subtype_id: int, controller_id: int,
+                                  include_archived: bool = True) -> list[dict]:
+        """All fw_versions for (subtype, controller) with ctrl_name joined; newest first."""
+        archived_clause = '' if include_archived else ' AND fv.archived=0'
+        rows = self._conn.execute(f'''
+            SELECT fv.*, cm.name AS ctrl_name
+            FROM fw_versions fv
+            JOIN controller_models cm ON fv.controller_id = cm.id
+            WHERE fv.subtype_id=? AND fv.controller_id=?{archived_clause}
+            ORDER BY fv.dt_str DESC, fv.upload_date DESC
+        ''', (subtype_id, controller_id)).fetchall()
+        result = []
+        for r in rows:
+            d = self._fw_row_to_dict(r)
+            d['ctrl_name'] = r['ctrl_name']
+            result.append(d)
+        return result
+
     def get_latest_fw_version(self, subtype_id: int,
                                controller_id: int) -> dict | None:
         versions = self.get_fw_versions(subtype_id, controller_id)
