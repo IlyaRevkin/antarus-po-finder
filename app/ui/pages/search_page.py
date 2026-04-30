@@ -391,6 +391,8 @@ class SearchPage(QWidget):
                 has_any_local=self._has_any_local(res.rule),
                 has_params=has_params,
                 has_hmi=self._has_hmi(res.rule),
+                has_map=self._has_io_map(res.rule),
+                has_instructions=self._has_instructions_file(res.rule),
             )
             card.open_requested.connect(self._open_fw)
             card.open_plc_requested.connect(self._open_plc)
@@ -562,6 +564,8 @@ class SearchPage(QWidget):
 
     def _open_map(self, result: SearchResult):
         path = self._resolve_rule_path(result.rule.io_map_path)
+        if not path:
+            path = self._find_map_or_instr(result.rule, 'Карта ВВ')
         if not path:
             QMessageBox.information(self, 'Карта in/out',
                 f'Файл карты не найден.\nПуть: {result.rule.io_map_path}')
@@ -744,6 +748,39 @@ class SearchPage(QWidget):
                 return True
         return False
 
+    def _find_map_or_instr(self, rule, folder_name: str) -> str:
+        """Return path to local Карта ВВ / Инструкция folder (or disk hierarchy copy)."""
+        import re
+        from app.services.config_service import LOCAL_FW
+        local_dir = rule.local_dir or re.sub(r'[^\w\-]', '_', rule.name)
+        local_folder = os.path.join(LOCAL_FW, local_dir, folder_name)
+        if os.path.isdir(local_folder):
+            try:
+                if any(e.is_file() for e in os.scandir(local_folder)):
+                    return local_folder
+            except Exception:
+                pass
+        fw_dir = self._resolve_rule_path(getattr(rule, 'firmware_dir', ''))
+        if fw_dir and os.path.isdir(fw_dir):
+            disk_folder = os.path.join(os.path.dirname(fw_dir), folder_name)
+            if os.path.isdir(disk_folder):
+                try:
+                    if any(e.is_file() for e in os.scandir(disk_folder)):
+                        return disk_folder
+                except Exception:
+                    pass
+        return ''
+
+    def _has_io_map(self, rule) -> bool:
+        if rule.io_map_path and self._resolve_rule_path(rule.io_map_path):
+            return True
+        return bool(self._find_map_or_instr(rule, 'Карта ВВ'))
+
+    def _has_instructions_file(self, rule) -> bool:
+        if rule.instructions_path and self._resolve_rule_path(rule.instructions_path):
+            return True
+        return bool(self._find_map_or_instr(rule, 'Инструкция'))
+
     _KINCO_PLC_EXTS = frozenset({'.kpr', '.kpj', '.kpro', '.cpj', '.prj'})
     _KINCO_HMI_EXTS = frozenset({'.dpj', '.emt', '.emtp', '.emsln'})
 
@@ -861,6 +898,8 @@ class SearchPage(QWidget):
 
     def _open_instructions(self, result: SearchResult):
         path = self._resolve_rule_path(result.rule.instructions_path)
+        if not path:
+            path = self._find_map_or_instr(result.rule, 'Инструкция')
         if not path:
             QMessageBox.information(self, 'Инструкции',
                 f'Файл инструкций не найден.\nПуть: {result.rule.instructions_path}')

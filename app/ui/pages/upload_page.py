@@ -485,11 +485,13 @@ class UploadPage(QWidget):
             self._write_changelog(dst_folder, fwv, launch_types, desc)
 
             io_map_src = self._io_map_input.text().strip()
+            io_map_dst = ''
             if io_map_src:
-                io_dst = hs.io_map_path(root_path, group.name, sub.name, ctrl.name)
-                self._copy_to_folder(io_map_src, io_dst)
+                io_map_dst = hs.io_map_path(root_path, group.name, sub.name, ctrl.name)
+                self._copy_to_folder(io_map_src, io_map_dst)
 
             instr_src = self._instructions_input.text().strip()
+            instr_dst = ''
             if instr_src:
                 instr_dst = hs.instr_path(root_path, group.name, sub.name, ctrl.name)
                 self._copy_to_folder(instr_src, instr_dst)
@@ -513,8 +515,8 @@ class UploadPage(QWidget):
             'description':      desc,
             'changelog':        '',
             'launch_types':     launch_types,
-            'io_map_path':      io_map_src if io_map_src else '',
-            'instructions_path': instr_src if instr_src else '',
+            'io_map_path':      io_map_dst,
+            'instructions_path': instr_dst,
             'is_opc':           is_opc,
             'request_num':      req_num,
         })

@@ -411,15 +411,18 @@ class Database:
 
     def get_fw_versions_with_ctrl(self, subtype_id: int, controller_id: int,
                                   include_archived: bool = True) -> list[dict]:
-        """All fw_versions for (subtype, controller) with ctrl_name joined; newest first."""
+        """All fw_versions for (subtype, controller) with ctrl_name joined; newest first.
+        Also includes orphaned versions (subtype_id IS NULL) for the same controller,
+        to show history entries whose subtype was removed by a migration.
+        """
         archived_clause = '' if include_archived else ' AND fv.archived=0'
         rows = self._conn.execute(f'''
             SELECT fv.*, cm.name AS ctrl_name
             FROM fw_versions fv
             JOIN controller_models cm ON fv.controller_id = cm.id
-            WHERE fv.subtype_id=? AND fv.controller_id=?{archived_clause}
+            WHERE fv.controller_id=? AND (fv.subtype_id=? OR fv.subtype_id IS NULL){archived_clause}
             ORDER BY fv.dt_str DESC, fv.upload_date DESC
-        ''', (subtype_id, controller_id)).fetchall()
+        ''', (controller_id, subtype_id)).fetchall()
         result = []
         for r in rows:
             d = self._fw_row_to_dict(r)

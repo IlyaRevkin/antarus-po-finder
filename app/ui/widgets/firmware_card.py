@@ -30,13 +30,16 @@ class FirmwareCard(QFrame):
 
     def __init__(self, result: SearchResult, has_local: bool = False,
                  has_any_local: bool = False, has_params: bool = False,
-                 has_hmi: bool = False, parent=None):
+                 has_hmi: bool = False, has_map: bool = False,
+                 has_instructions: bool = False, parent=None):
         super().__init__(parent)
-        self.result        = result
-        self.has_local     = has_local      # latest version exists locally
-        self.has_any_local = has_any_local  # any version exists locally (possibly outdated)
-        self.has_params    = has_params
-        self.has_hmi       = has_hmi        # local folder contains HMI files
+        self.result           = result
+        self.has_local        = has_local
+        self.has_any_local    = has_any_local
+        self.has_params       = has_params
+        self.has_hmi          = has_hmi
+        self.has_map          = has_map
+        self.has_instructions = has_instructions
         self.setObjectName('card')
         self.setCursor(Qt.PointingHandCursor)
         self._build(result)
@@ -130,12 +133,12 @@ class FirmwareCard(QFrame):
                 btn_row.addWidget(_btn('Обновить', lambda: self.download_requested.emit(self.result), 'download'))
             else:
                 btn_row.addWidget(_btn('Синхронизировать', lambda: self.download_requested.emit(self.result), 'download'))
-        if rule.io_map_path:
+        if rule.io_map_path or self.has_map:
             btn_row.addWidget(_btn('Карта in/out', lambda: self.map_requested.emit(self.result), 'map'))
         if self.has_params:
             btn_row.addWidget(_btn('Параметры', lambda: self.params_requested.emit(self.result), 'params'))
 
-        if rule.instructions_path:
+        if rule.instructions_path or self.has_instructions:
             btn_row.addWidget(_btn('Инструкции', lambda: self.instructions_requested.emit(self.result), 'book'))
         if rule.passport_dir:
             btn_row.addWidget(_btn('Паспорт', lambda: self.passport_requested.emit(self.result), 'passport'))
