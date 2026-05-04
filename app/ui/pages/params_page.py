@@ -149,7 +149,7 @@ class ParamsPage(QWidget):
         filter_row.addWidget(self._filter_group)
         self._filter_manuf = QComboBox()
         self._filter_manuf.setFixedHeight(32)
-        self._filter_manuf.setMinimumWidth(160)
+        self._filter_manuf.setMinimumWidth(190)
         self._filter_manuf.currentIndexChanged.connect(self._reload_table)
         filter_row.addWidget(QLabel('Производитель:'))
         filter_row.addWidget(self._filter_manuf)

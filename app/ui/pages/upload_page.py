@@ -90,6 +90,7 @@ class UploadPage(QWidget):
         form_scroll = QScrollArea()
         form_scroll.setWidgetResizable(True)
         form_scroll.setFrameShape(QFrame.NoFrame)
+        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         form_widget = QWidget()
         self._form = QFormLayout(form_widget)
         self._form.setSpacing(10)
@@ -463,11 +464,11 @@ class UploadPage(QWidget):
             if reply != QMessageBox.Yes:
                 return
 
+        # ── Critical: copy firmware files ────────────────────────────────────────
         try:
             os.makedirs(dst_folder, exist_ok=True)
 
             if os.path.isdir(self._src_path):
-                # Folder: copy all contents into dst_folder
                 for entry in os.scandir(self._src_path):
                     dst_entry = os.path.join(dst_folder, entry.name)
                     if entry.is_dir():
@@ -480,34 +481,46 @@ class UploadPage(QWidget):
                 dst_name = build_firmware_filename(
                     sub.folder_name, ctrl.name, fwv, ext, req_num)
                 shutil.copy2(self._src_path, os.path.join(dst_folder, dst_name))
+        except OSError as e:
+            QMessageBox.critical(self, 'Ошибка файла', str(e))
+            return
 
-            desc = self._desc_edit.toPlainText().strip()
+        # ── Register in DB immediately after successful copy ───────────────────
+        desc = self._desc_edit.toPlainText().strip()
+
+        # ── Non-critical: changelog / io_map / instructions ───────────────────
+        _warnings: list[str] = []
+
+        try:
             self._write_changelog(dst_folder, fwv, launch_types, desc)
+        except OSError as e:
+            _warnings.append(f'CHANGELOG: {e}')
 
-            io_map_src = self._io_map_input.text().strip()
-            io_map_stored = ''
-            if io_map_src:
+        io_map_src = self._io_map_input.text().strip()
+        io_map_stored = ''
+        if io_map_src:
+            try:
                 io_dst_folder = hs.io_map_path(root_path, group.name, sub.name, ctrl.name)
                 self._copy_to_folder(io_map_src, io_dst_folder)
-                # Store destination path so sync can find the file on the disk
                 if os.path.isfile(io_map_src):
                     io_map_stored = os.path.join(io_dst_folder, os.path.basename(io_map_src))
                 else:
                     io_map_stored = io_dst_folder
+            except OSError as e:
+                _warnings.append(f'Карта ВВ: {e}')
 
-            instr_src = self._instructions_input.text().strip()
-            instr_stored = ''
-            if instr_src:
+        instr_src = self._instructions_input.text().strip()
+        instr_stored = ''
+        if instr_src:
+            try:
                 instr_dst_folder = hs.instr_path(root_path, group.name, sub.name, ctrl.name)
                 self._copy_to_folder(instr_src, instr_dst_folder)
                 if os.path.isfile(instr_src):
                     instr_stored = os.path.join(instr_dst_folder, os.path.basename(instr_src))
                 else:
                     instr_stored = instr_dst_folder
-
-        except OSError as e:
-            QMessageBox.critical(self, 'Ошибка файла', str(e))
-            return
+            except OSError as e:
+                _warnings.append(f'Инструкция: {e}')
 
         self._mw.db.add_fw_version({
             'subtype_id':       sub.id,
@@ -531,8 +544,10 @@ class UploadPage(QWidget):
         })
 
         self._mw.show_status(f'Загружено: {fwv.raw}')
-        QMessageBox.information(self, 'Готово',
-            f'Прошивка {fwv.raw} загружена.\nПапка: {dst_folder}')
+        msg = f'Прошивка {fwv.raw} загружена.\nПапка: {dst_folder}'
+        if _warnings:
+            msg += '\n\nПредупреждения:\n' + '\n'.join(_warnings)
+        QMessageBox.information(self, 'Готово', msg)
         self._reset_form()
 
     @staticmethod

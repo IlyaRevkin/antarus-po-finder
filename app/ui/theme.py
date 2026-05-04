@@ -391,7 +391,7 @@ QPushButton#tab-btn {{
     border-radius: 6px;
     padding: 7px 16px;
     font-weight: normal;
-    min-width: 80px;
+    min-width: 110px;
     min-height: 34px;
 }}
 QPushButton#tab-btn:hover {{

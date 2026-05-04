@@ -383,8 +383,12 @@ class SearchPage(QWidget):
         self._status_lbl.setText(f'Найдено: {len(results)}')
 
         for res in results:
-            all_tpl = self._mw.db.get_all_templates()
-            has_params = any(res.rule.name in t.rule_names for t in all_tpl)
+            sub_id = getattr(res.rule, '_subtype_id', None)
+            if sub_id is not None:
+                has_params = bool(self._mw.db.get_param_files(subtype_id=sub_id))
+            else:
+                all_tpl = self._mw.db.get_all_templates()
+                has_params = any(res.rule.name in t.rule_names for t in all_tpl)
             card = FirmwareCard(
                 res,
                 has_local=self._has_local(res.rule),
@@ -607,7 +611,88 @@ class SearchPage(QWidget):
         from PySide6.QtCore import Qt
         import shutil
         rule = result.rule
+        sub_id = getattr(rule, '_subtype_id', None)
 
+        if sub_id is not None:
+            # ── Hierarchy result: use param_files ─────────────────────────────
+            param_files = self._mw.db.get_param_files(subtype_id=sub_id)
+            if not param_files:
+                QMessageBox.information(self, 'Параметры',
+                    'Параметры для этого типа шкафа не найдены.\n'
+                    'Загрузите параметры в разделе «Параметры».')
+                return
+
+            dlg = QDialog(self)
+            dlg.setWindowTitle(f'Параметры — {rule.name}')
+            dlg.setMinimumSize(500, 380)
+            lay = QVBoxLayout(dlg)
+
+            lst = QListWidget()
+            for pf in param_files:
+                label = f'{pf["filename"]}  [{pf["manufacturer"]}]'
+                item = QListWidgetItem(label)
+                item.setData(Qt.UserRole, pf['disk_path'])
+                if pf.get('description'):
+                    item.setToolTip(pf['description'])
+                lst.addItem(item)
+            lay.addWidget(lst)
+
+            btn_row = QHBoxLayout()
+
+            def _open():
+                item = lst.currentItem()
+                if not item:
+                    return
+                path = item.data(Qt.UserRole)
+                if path and os.path.exists(path):
+                    os.startfile(path)
+                else:
+                    QMessageBox.warning(dlg, 'Открыть', f'Файл не найден:\n{path}')
+
+            def _open_folder():
+                item = lst.currentItem()
+                if not item:
+                    return
+                path = item.data(Qt.UserRole)
+                folder = path if os.path.isdir(path) else os.path.dirname(path)
+                if folder and os.path.isdir(folder):
+                    os.startfile(folder)
+
+            def _copy_to_proto():
+                proto = self._mw.cfg.protocol_folder()
+                if not proto:
+                    proto = QFileDialog.getExistingDirectory(self, 'Папка протокола')
+                    if proto:
+                        self._mw.cfg.set_inspection_folder(proto)
+                if proto and os.path.isdir(proto):
+                    item = lst.currentItem()
+                    if item:
+                        src = item.data(Qt.UserRole)
+                        if os.path.isfile(src):
+                            shutil.copy2(src, proto)
+                            self._mw.show_status(f'Скопировано: {os.path.basename(src)}')
+
+            for label, cmd, iname in [
+                ('Открыть',    _open,          'open'),
+                ('Папка',      _open_folder,   'folder'),
+                ('В протокол', _copy_to_proto, 'copy'),
+            ]:
+                b = QPushButton(label)
+                b.setObjectName('secondary')
+                b.setIcon(make_icon(iname, ICON_SECONDARY, 14))
+                b.setIconSize(QSize(14, 14))
+                b.clicked.connect(cmd)
+                btn_row.addWidget(b)
+            btn_row.addStretch()
+            lay.addLayout(btn_row)
+
+            close_btn = QDialogButtonBox(QDialogButtonBox.Close)
+            close_btn.rejected.connect(dlg.accept)
+            lay.addWidget(close_btn)
+            dlg.exec()
+            return
+
+        # ── Legacy rule: use old templates system ─────────────────────────────
         all_templates = self._mw.db.get_all_templates()
         pch_templates = [t for t in all_templates
                          if t.template_type == 'pch' and rule.name in t.rule_names]
@@ -633,11 +718,11 @@ class SearchPage(QWidget):
             for t in templates:
                 item = QListWidgetItem(t.name)
                 best = self._template_best_path(t)
-                item.setData(Qt.UserRole, best)          # resolved path (local or original)
-                item.setData(Qt.UserRole + 1, t.path)   # original path (for display)
+                item.setData(Qt.UserRole, best)
+                item.setData(Qt.UserRole + 1, t.path)
                 tip = t.description or ''
                 if best != t.path:
-                    tip = (tip + '\n' if tip else '') + f'[локальная копия]'
+                    tip = (tip + '\n' if tip else '') + '[локальная копия]'
                 if tip:
                     item.setToolTip(tip.strip())
                 lst.addItem(item)
@@ -660,7 +745,7 @@ class SearchPage(QWidget):
                 if not proto:
                     proto = QFileDialog.getExistingDirectory(self, 'Папка протокола')
                     if proto:
-                        self._mw.cfg.set_inspection_folder( proto)
+                        self._mw.cfg.set_inspection_folder(proto)
                 if proto and os.path.isdir(proto):
                     item = lst.currentItem()
                     if item:
@@ -997,30 +1082,38 @@ class SearchPage(QWidget):
         form.setSpacing(8)
         ALL = '— (все) —'
 
-        type_combo = QComboBox()
-        type_combo.addItem(ALL, '')
-        type_combo.addItem('УПП', 'УПП')
-        type_combo.addItem('ПЧ-КПЧ', 'ПЧ-КПЧ')
-        form.addRow('Тип:', type_combo)
+        # Group combo
+        groups = self._mw.db.get_all_equipment_groups()
+        grp_combo = QComboBox()
+        grp_combo.addItem(ALL, None)
+        for g in groups:
+            grp_combo.addItem(g.name, g)
+        form.addRow('Группа (тип шкафа):', grp_combo)
 
+        # Subtype combo — rebuilt when group changes
         sub_combo = QComboBox()
         sub_combo.addItem(ALL, None)
-        subtypes = self._mw.db.get_all_equipment_subtypes()
-        for s in subtypes:
-            sub_combo.addItem(s.folder_name, s)
-        form.addRow('Подтип шкафа:', sub_combo)
+        form.addRow('Подтип:', sub_combo)
+
+        def _rebuild_subtypes():
+            grp = grp_combo.currentData()
+            sub_combo.blockSignals(True)
+            sub_combo.clear()
+            sub_combo.addItem(ALL, None)
+            if grp:
+                for s in self._mw.db.get_subtypes_for_group(grp.id):
+                    if s.name != '—':
+                        sub_combo.addItem(s.name, s)
+            sub_combo.blockSignals(False)
+            _update()
+
+        grp_combo.currentIndexChanged.connect(_rebuild_subtypes)
 
         mfr_combo = QComboBox()
         mfr_combo.addItem(ALL, '')
         for m in self._mw.db.get_param_manufacturers():
             mfr_combo.addItem(m, m)
         form.addRow('Производитель:', mfr_combo)
-
-        conn_combo = QComboBox()
-        conn_combo.addItem(ALL, '')
-        conn_combo.addItem('Аналог', 'Аналог')
-        conn_combo.addItem('Дискрет', 'Дискрет')
-        form.addRow('Тип подключения:', conn_combo)
 
         lay.addLayout(form)
 
@@ -1030,21 +1123,19 @@ class SearchPage(QWidget):
         lay.addWidget(preview_lbl)
 
         def _best_path():
-            """Return the most specific existing folder based on selections."""
+            if not root_path:
+                return ''
             parts = [root_path, 'Параметры']
-            t = type_combo.currentData()
-            if t:
-                parts.append(t)
+            grp = grp_combo.currentData()
+            if grp:
+                parts.append(grp.name)
             sub = sub_combo.currentData()
             if sub:
-                parts.append(sub.folder_name)
+                parts.append(sub.name)
             m = mfr_combo.currentData()
             if m:
                 parts.append(m)
-            c = conn_combo.currentData()
-            if c:
-                parts.append(c)
-            return os.path.join(*parts) if root_path else ''
+            return os.path.join(*parts)
 
         def _update():
             path = _best_path()
@@ -1054,20 +1145,20 @@ class SearchPage(QWidget):
             exists = '✓' if os.path.isdir(path) else '✗'
             preview_lbl.setText(f'{exists} {path}')
 
-        type_combo.currentIndexChanged.connect(_update)
         sub_combo.currentIndexChanged.connect(_update)
         mfr_combo.currentIndexChanged.connect(_update)
-        conn_combo.currentIndexChanged.connect(_update)
         _update()
 
         btn_row = QHBoxLayout()
         open_btn = QPushButton('Открыть папку')
+
         def _open():
             path = _best_path()
             if not path:
                 return
             os.makedirs(path, exist_ok=True)
             os.startfile(path)
+
         open_btn.clicked.connect(_open)
         btn_row.addWidget(open_btn)
         btn_row.addStretch()

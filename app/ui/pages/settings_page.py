@@ -425,14 +425,14 @@ class SettingsPage(QWidget):
 
         lbl = QLabel('Ярлыки для быстрого запуска (доступны наладчику в поиске)')
         lbl.setObjectName('subtitle')
+        lbl.setWordWrap(True)
         layout.addWidget(lbl)
 
         self._apps_table = QTableWidget()
-        self._apps_table.setColumnCount(3)
-        self._apps_table.setHorizontalHeaderLabels(['Название', 'Путь', 'Иконка'])
+        self._apps_table.setColumnCount(2)
+        self._apps_table.setHorizontalHeaderLabels(['Название', 'Путь'])
         self._apps_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self._apps_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self._apps_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self._apps_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._apps_table.verticalHeader().hide()
         layout.addWidget(self._apps_table)
@@ -1198,9 +1198,11 @@ class SettingsPage(QWidget):
         apps = self._mw.cfg.quick_apps()
         self._apps_table.setRowCount(len(apps))
         for row, app in enumerate(apps):
-            self._apps_table.setItem(row, 0, QTableWidgetItem(app.get('name', '')))
-            self._apps_table.setItem(row, 1, QTableWidgetItem(app.get('path', '')))
-            self._apps_table.setItem(row, 2, QTableWidgetItem(app.get('icon', '')))
+            name_item = QTableWidgetItem(app.get('name', ''))
+            path_item = QTableWidgetItem(app.get('path', ''))
+            path_item.setToolTip(app.get('path', ''))
+            self._apps_table.setItem(row, 0, name_item)
+            self._apps_table.setItem(row, 1, path_item)
 
     def _add_app_row(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1213,8 +1215,9 @@ class SettingsPage(QWidget):
         self._apps_table.insertRow(row)
         name = os.path.splitext(os.path.basename(path))[0]
         self._apps_table.setItem(row, 0, QTableWidgetItem(name))
-        self._apps_table.setItem(row, 1, QTableWidgetItem(path))
-        self._apps_table.setItem(row, 2, QTableWidgetItem(''))
+        path_item = QTableWidgetItem(path)
+        path_item.setToolTip(path)
+        self._apps_table.setItem(row, 1, path_item)
 
     def _del_app_row(self):
         row = self._apps_table.currentRow()
@@ -1226,9 +1229,8 @@ class SettingsPage(QWidget):
         for row in range(self._apps_table.rowCount()):
             name = (self._apps_table.item(row, 0) or QTableWidgetItem('')).text()
             path = (self._apps_table.item(row, 1) or QTableWidgetItem('')).text()
-            icon = (self._apps_table.item(row, 2) or QTableWidgetItem('')).text()
             if name or path:
-                apps.append({'name': name, 'path': path, 'icon': icon})
+                apps.append({'name': name, 'path': path})
         self._mw.cfg.set_quick_apps(apps)
         self._mw.reload_sidebar_apps()
         self._mw.show_status('Быстрые приложения сохранены')

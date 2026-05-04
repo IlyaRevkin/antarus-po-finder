@@ -12,8 +12,9 @@ from PySide6.QtWidgets import (
     QFrame, QSizePolicy,
     QDialog, QFormLayout, QDialogButtonBox, QComboBox, QLineEdit, QMessageBox,
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QSize
+from PySide6.QtCore import Qt, QTimer, Signal, QSize, QFileInfo
 from PySide6.QtGui import QIcon, QPixmap, QPainter
+from PySide6.QtWidgets import QFileIconProvider
 from PySide6.QtSvg import QSvgRenderer
 from app.ui.icons import icon_for_theme
 
@@ -382,6 +383,7 @@ class MainWindow(QMainWindow):
             if item.widget():
                 item.widget().deleteLater()
         apps = self.cfg.quick_apps()
+        _icon_provider = QFileIconProvider()
         for app in apps:
             name = app.get('name', '') or os.path.basename(app.get('path', ''))
             path = app.get('path', '')
@@ -389,6 +391,9 @@ class MainWindow(QMainWindow):
                 continue
             btn = QPushButton(name)
             btn.setObjectName('secondary')
+            if os.path.exists(path):
+                btn.setIcon(_icon_provider.icon(QFileInfo(path)))
+                btn.setIconSize(QSize(16, 16))
             btn.clicked.connect(lambda _, p=path: self._launch_app(p))
             lay.addWidget(btn)
         self._qa_sidebar_widget.setVisible(bool(apps))
