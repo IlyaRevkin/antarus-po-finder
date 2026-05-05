@@ -1053,9 +1053,14 @@ class SettingsPage(QWidget):
         with open(src, encoding='utf-8') as f:
             data = _json.load(f)
 
-        # Import settings (key-value)
+        # Preserve machine-specific paths — they differ per computer
+        current_root = self._mw.cfg.root_path()
         settings = data.get('settings', {})
-        skip_keys = {'admin_password', 'programmer_password', 'naladchik_admin_password'}
+        old_root = settings.get('root_path', '')
+        skip_keys = {
+            'admin_password', 'programmer_password', 'naladchik_admin_password',
+            'root_path', 'second_disk_path', 'inspection_folder',
+        }
         settings_count = 0
         for key, value in settings.items():
             if key not in skip_keys:
@@ -1064,6 +1069,10 @@ class SettingsPage(QWidget):
 
         # Import hierarchy tables + fw_versions
         counts = self._mw.db.import_hierarchy_data(data)
+
+        # Remap disk paths if the original machine had a different root
+        if old_root and current_root and old_root != current_root:
+            self._mw.db.remap_fw_paths(old_root, current_root)
 
         # Refresh all UI components that depend on imported data
         self._load_general()

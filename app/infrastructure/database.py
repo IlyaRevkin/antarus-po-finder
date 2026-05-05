@@ -207,12 +207,21 @@ class Database:
         # Reason: groups like НГР always have real subtypes; the '—' entry
         # caused controllers to appear directly under the group folder,
         # mixed with subtype folders.
-        self._conn.execute("""
-            DELETE FROM equipment_subtypes
+        # First clean up fw_versions / param_files that reference these subtypes.
+        stale_ids = [r[0] for r in self._conn.execute("""
+            SELECT id FROM equipment_subtypes
             WHERE name = '—' AND group_id IN (
                 SELECT DISTINCT group_id FROM equipment_subtypes WHERE name != '—'
             )
-        """)
+        """).fetchall()]
+        if stale_ids:
+            ph = ','.join('?' * len(stale_ids))
+            self._conn.execute(f'DELETE FROM fw_versions  WHERE subtype_id IN ({ph})', stale_ids)
+            self._conn.execute(f'DELETE FROM param_files  WHERE subtype_id IN ({ph})', stale_ids)
+            self._conn.execute(f"""
+                DELETE FROM equipment_subtypes
+                WHERE name = '—' AND id IN ({ph})
+            """, stale_ids)
         self._conn.commit()
 
     def _seed_hierarchy_defaults(self):
@@ -279,6 +288,13 @@ class Database:
         return row['id'] if row else -1
 
     def delete_equipment_group(self, group_id: int):
+        subtype_ids = [r[0] for r in self._conn.execute(
+            'SELECT id FROM equipment_subtypes WHERE group_id=?', (group_id,)
+        ).fetchall()]
+        if subtype_ids:
+            ph = ','.join('?' * len(subtype_ids))
+            self._conn.execute(f'DELETE FROM fw_versions WHERE subtype_id IN ({ph})', subtype_ids)
+            self._conn.execute(f'DELETE FROM param_files WHERE subtype_id IN ({ph})', subtype_ids)
         self._conn.execute('DELETE FROM equipment_groups WHERE id=?', (group_id,))
         self._conn.commit()
 
@@ -319,6 +335,8 @@ class Database:
         return row['id'] if row else -1
 
     def delete_equipment_subtype(self, subtype_id: int):
+        self._conn.execute('DELETE FROM fw_versions WHERE subtype_id=?', (subtype_id,))
+        self._conn.execute('DELETE FROM param_files WHERE subtype_id=?', (subtype_id,))
         self._conn.execute('DELETE FROM equipment_subtypes WHERE id=?', (subtype_id,))
         self._conn.commit()
 
@@ -342,6 +360,7 @@ class Database:
         return row['id'] if row else -1
 
     def delete_controller_model(self, ctrl_id: int):
+        self._conn.execute('DELETE FROM fw_versions WHERE controller_id=?', (ctrl_id,))
         self._conn.execute('DELETE FROM controller_models WHERE id=?', (ctrl_id,))
         self._conn.commit()
 
@@ -588,6 +607,32 @@ class Database:
             'param_manufacturers': manufacturers,
             'fw_versions':         fw_versions,
         }
+
+    def remap_fw_paths(self, old_root: str, new_root: str):
+        """Replace old_root prefix with new_root in fw_versions path columns."""
+        old = old_root.rstrip('/\\')
+        new = new_root.rstrip('/\\')
+        if not old or old == new:
+            return
+        rows = self._conn.execute(
+            'SELECT id, disk_path, io_map_path, instructions_path FROM fw_versions'
+        ).fetchall()
+        for row in rows:
+            changed = False
+            vals = {}
+            for col in ('disk_path', 'io_map_path', 'instructions_path'):
+                val = row[col] or ''
+                if val.startswith(old):
+                    vals[col] = new + val[len(old):]
+                    changed = True
+                else:
+                    vals[col] = val
+            if changed:
+                self._conn.execute(
+                    'UPDATE fw_versions SET disk_path=?, io_map_path=?, instructions_path=? WHERE id=?',
+                    (vals['disk_path'], vals['io_map_path'], vals['instructions_path'], row['id'])
+                )
+        self._conn.commit()
 
     def import_hierarchy_data(self, data: dict) -> dict:
         """Upsert hierarchy tables + fw_versions from exported dict. Returns counts."""
