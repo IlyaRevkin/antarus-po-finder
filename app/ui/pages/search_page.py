@@ -234,22 +234,20 @@ class SearchPage(QWidget):
         # ── Try classic WIA COM (works when WIA driver is installed) ──────────
         try:
             import win32com.client
-            mgr = win32com.client.Dispatch('WIA.DeviceManager')
-            if mgr.DeviceInfos.Count > 0:
-                wia = win32com.client.Dispatch('WIA.CommonDialog')
-                image = wia.ShowAcquireImage(
-                    1, 1, 0,
-                    '{19E4A5AA-5662-4FC5-A0C0-1758028E1057}',
-                    False, True, False,
-                )
-                if image is None:
-                    return
-                ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-                save_path = os.path.join(proto, f'scan_{ts}.jpg')
-                image.SaveFile(save_path)
-                self._mw.show_status(f'Скан сохранён: {os.path.basename(save_path)}')
-                os.startfile(save_path)
+            wia = win32com.client.Dispatch('WIA.CommonDialog')
+            image = wia.ShowAcquireImage(
+                1, 1, 0,
+                '{19E4A5AA-5662-4FC5-A0C0-1758028E1057}',
+                False, True, False,
+            )
+            if image is None:
                 return
+            ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            save_path = os.path.join(proto, f'scan_{ts}.jpg')
+            image.SaveFile(save_path)
+            self._mw.show_status(f'Скан сохранён: {os.path.basename(save_path)}')
+            os.startfile(save_path)
+            return
         except Exception:
             pass  # WIA not available or no devices — use fallback
 

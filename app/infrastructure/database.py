@@ -600,16 +600,30 @@ class Database:
             ORDER BY fv.id
         ''').fetchall()]
 
+        # param_files with human-readable names for portability
+        param_files = [dict(r) for r in self._conn.execute('''
+            SELECT pf.filename, pf.disk_path, pf.description, pf.upload_date,
+                   pf.archived, pf.manufacturer,
+                   es.name AS subtype_name,
+                   eg.name AS group_name
+            FROM param_files pf
+            JOIN equipment_subtypes es ON pf.subtype_id = es.id
+            JOIN equipment_groups   eg ON es.group_id   = eg.id
+            WHERE pf.archived = 0
+            ORDER BY pf.id
+        ''').fetchall()]
+
         return {
             'equipment_groups':    groups,
             'equipment_subtypes':  subtypes,
             'controller_models':   controllers,
             'param_manufacturers': manufacturers,
             'fw_versions':         fw_versions,
+            'param_files':         param_files,
         }
 
     def remap_fw_paths(self, old_root: str, new_root: str):
-        """Replace old_root prefix with new_root in fw_versions path columns."""
+        """Replace old_root prefix with new_root in fw_versions and param_files path columns."""
         old = old_root.rstrip('/\\')
         new = new_root.rstrip('/\\')
         if not old or old == new:
@@ -631,6 +645,15 @@ class Database:
                 self._conn.execute(
                     'UPDATE fw_versions SET disk_path=?, io_map_path=?, instructions_path=? WHERE id=?',
                     (vals['disk_path'], vals['io_map_path'], vals['instructions_path'], row['id'])
+                )
+        # Also remap param_files.disk_path
+        pf_rows = self._conn.execute('SELECT id, disk_path FROM param_files').fetchall()
+        for row in pf_rows:
+            val = row['disk_path'] or ''
+            if val.startswith(old):
+                self._conn.execute(
+                    'UPDATE param_files SET disk_path=? WHERE id=?',
+                    (new + val[len(old):], row['id'])
                 )
         self._conn.commit()
 
@@ -725,6 +748,36 @@ class Database:
             )
             fwv_added += 1
         counts['fw_versions'] = fwv_added
+
+        # param_files — resolve subtype_id by group_name + subtype_name
+        pf_added = 0
+        for pf in data.get('param_files', []):
+            sub_row = self._conn.execute(
+                '''SELECT es.id FROM equipment_subtypes es
+                   JOIN equipment_groups eg ON es.group_id = eg.id
+                   WHERE eg.name=? AND es.name=?''',
+                (pf.get('group_name', ''), pf.get('subtype_name', ''))
+            ).fetchone()
+            if not sub_row:
+                continue
+            exists = self._conn.execute(
+                '''SELECT 1 FROM param_files
+                   WHERE subtype_id=? AND manufacturer=? AND filename=? AND disk_path=?''',
+                (sub_row['id'], pf.get('manufacturer', ''),
+                 pf.get('filename', ''), pf.get('disk_path', ''))
+            ).fetchone()
+            if exists:
+                continue
+            self._conn.execute(
+                '''INSERT INTO param_files(subtype_id, manufacturer, filename, disk_path,
+                   description, upload_date, archived)
+                   VALUES(?,?,?,?,?,?,?)''',
+                (sub_row['id'], pf.get('manufacturer', ''), pf.get('filename', ''),
+                 pf.get('disk_path', ''), pf.get('description', ''),
+                 pf.get('upload_date', _now()), int(pf.get('archived', 0)))
+            )
+            pf_added += 1
+        counts['param_files'] = pf_added
 
         self._conn.commit()
         return counts

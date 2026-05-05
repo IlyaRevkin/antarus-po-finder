@@ -1034,9 +1034,11 @@ class SettingsPage(QWidget):
         with open(out_path, 'w', encoding='utf-8') as f:
             _json.dump(data, f, ensure_ascii=False, indent=2)
         fwv_count = len(hierarchy.get('fw_versions', []))
+        pf_count  = len(hierarchy.get('param_files', []))
         QMessageBox.information(self, 'Экспорт',
             f'Конфиг сохранён:\n{out_path}\n\n'
             f'Прошивок: {fwv_count}  '
+            f'Параметров: {pf_count}  '
             f'Групп: {len(hierarchy.get("equipment_groups", []))}')
         self._mw.show_status('Конфиг экспортирован')
 
@@ -1086,7 +1088,8 @@ class SettingsPage(QWidget):
             f'Подтипов добавлено: {counts.get("subtypes", 0)}\n'
             f'Контроллеров добавлено: {counts.get("controllers", 0)}\n'
             f'Производителей добавлено: {counts.get("manufacturers", 0)}\n'
-            f'Прошивок добавлено: {counts.get("fw_versions", 0)}\n\n'
+            f'Прошивок добавлено: {counts.get("fw_versions", 0)}\n'
+            f'Параметров добавлено: {counts.get("param_files", 0)}\n\n'
             f'Экспортировано: {data.get("exported_at", "?")}')
         self._mw.show_status(f'Конфиг импортирован: {settings_count} настроек')
 
