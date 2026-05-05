@@ -378,14 +378,13 @@ class SearchPage(QWidget):
         self._status_lbl.setText('Поиск…')
         self._clear_cards()
 
-        results = self._mw.search_svc.search(query)
-
-        # Also search new hierarchy (fw_versions); skip duplicates by rule name
+        results   = self._mw.search_svc.search(query)
         hierarchy = self._mw.search_svc.search_hierarchy(query)
-        existing  = {r.rule.name for r in results}
-        for hr in hierarchy:
-            if hr.rule.name not in existing:
-                results.append(hr)
+
+        # Hierarchy results take precedence over legacy rules with the same name
+        h_names = {hr.rule.name for hr in hierarchy}
+        results  = [r for r in results if r.rule.name not in h_names]
+        results  = hierarchy + results
 
         if not results:
             self._status_lbl.setText(f'По запросу «{query}» ничего не найдено')
@@ -550,6 +549,20 @@ class SearchPage(QWidget):
                         if entry.is_file():
                             _shutil.copy2(entry.path,
                                           os.path.join(LOCAL_TEMPLATES, entry.name))
+            # For hierarchy results: also copy Карта ВВ and Инструкция from standard locations
+            if getattr(rule, '_subtype_id', None) is not None and rule.firmware_dir:
+                ctrl_folder = os.path.dirname(rule.firmware_dir)
+                if ctrl_folder and os.path.isdir(ctrl_folder):
+                    for folder_name in ('Карта ВВ', 'Инструкция'):
+                        fp = os.path.join(ctrl_folder, folder_name)
+                        if os.path.isdir(fp):
+                            for entry in os.scandir(fp):
+                                if entry.is_file():
+                                    try:
+                                        _shutil.copy2(entry.path,
+                                                      os.path.join(LOCAL_TEMPLATES, entry.name))
+                                    except OSError:
+                                        pass
             self._mw.show_status(f'Скопировано: {rule.name}')
             # Open the latest version immediately
             if ver:
@@ -595,6 +608,12 @@ class SearchPage(QWidget):
 
     def _open_map(self, result: SearchResult):
         path = self._resolve_rule_path(result.rule.io_map_path)
+        if not path and getattr(result.rule, '_subtype_id', None) is not None:
+            fw_disk = getattr(result.rule, 'firmware_dir', '')
+            if fw_disk:
+                io_folder = os.path.join(os.path.dirname(fw_disk), 'Карта ВВ')
+                if os.path.isdir(io_folder) and os.listdir(io_folder):
+                    path = io_folder
         if not path:
             QMessageBox.information(self, 'Карта in/out',
                 f'Файл карты не найден.\nПуть: {result.rule.io_map_path}')
@@ -948,6 +967,12 @@ class SearchPage(QWidget):
 
     def _open_instructions(self, result: SearchResult):
         path = self._resolve_rule_path(result.rule.instructions_path)
+        if not path and getattr(result.rule, '_subtype_id', None) is not None:
+            fw_disk = getattr(result.rule, 'firmware_dir', '')
+            if fw_disk:
+                instr_folder = os.path.join(os.path.dirname(fw_disk), 'Инструкция')
+                if os.path.isdir(instr_folder) and os.listdir(instr_folder):
+                    path = instr_folder
         if not path:
             QMessageBox.information(self, 'Инструкции',
                 f'Файл инструкций не найден.\nПуть: {result.rule.instructions_path}')
