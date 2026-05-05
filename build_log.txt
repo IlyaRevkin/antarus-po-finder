@@ -1,1 +1,25 @@
-/usr/bin/bash: line 2: setup_and_build.bat: command not found
+28 DEPRECATION: Running PyInstaller as admin is not necessary nor sensible. Run PyInstaller from a non-administrator terminal. PyInstaller 7.0 will block this.
+90 INFO: PyInstaller: 6.19.0, contrib hooks: 2026.1
+90 INFO: Python: 3.12.10
+105 INFO: Platform: Windows-11-10.0.26200-SP0
+105 INFO: Python environment: C:\Program Files\Python312
+105 INFO: wrote C:\Users\Ilia\Desktop\nc\Antarus_PO_Finder.spec
+287 INFO: Module search paths (PYTHONPATH):
+['',
+ 'C:\\Program Files\\Python312\\python312.zip',
+ 'C:\\Program Files\\Python312\\DLLs',
+ 'C:\\Program Files\\Python312\\Lib',
+ 'C:\\Program Files\\Python312',
+ 'C:\\Users\\Ilia\\AppData\\Roaming\\Python\\Python312\\site-packages',
+ 'C:\\Users\\Ilia\\AppData\\Roaming\\Python\\Python312\\site-packages\\win32',
+ 'C:\\Users\\Ilia\\AppData\\Roaming\\Python\\Python312\\site-packages\\win32\\lib',
+ 'C:\\Users\\Ilia\\AppData\\Roaming\\Python\\Python312\\site-packages\\Pythonwin',
+ 'C:\\Program Files\\Python312\\Lib\\site-packages',
+ 'C:\\Users\\Ilia\\Desktop\\nc']
+547 INFO: Appending 'datas' from .spec
+547 INFO: checking Analysis
+569 INFO: checking PYZ
+581 INFO: checking PKG
+586 INFO: Bootloader C:\Users\Ilia\AppData\Roaming\Python\Python312\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+586 INFO: checking EXE
+588 INFO: Build complete! The results are available in: C:\Users\Ilia\Desktop\nc\dist
