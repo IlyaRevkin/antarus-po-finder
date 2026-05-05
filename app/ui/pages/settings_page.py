@@ -570,6 +570,12 @@ class SettingsPage(QWidget):
         rebuild_btn.clicked.connect(self._rebuild_hierarchy)
         layout.addWidget(rebuild_btn)
 
+        sync_btn = QPushButton('Синхронизировать прошивки с диска')
+        sync_btn.setObjectName('secondary')
+        sync_btn.setToolTip('Сканирует папки ПО/ и добавляет в БД прошивки, которых ещё нет')
+        sync_btn.clicked.connect(self._sync_fw_from_disk)
+        layout.addWidget(sync_btn)
+
         scan_unknown_btn = QPushButton('Сканировать неизвестные файлы')
         scan_unknown_btn.setObjectName('secondary')
         scan_unknown_btn.clicked.connect(self._scan_unknown_files)
@@ -610,6 +616,32 @@ class SettingsPage(QWidget):
         # Manufacturers
         self._load_manufacturers()
 
+    def _move_deleted_folder(self, folder_name: str):
+        """Move folders with the given name from ПО tree to Неизвестное after hierarchy deletion."""
+        root = self._mw.cfg.root_path()
+        if not root or not os.path.isdir(root):
+            self._mw.show_status(
+                f'Диск не задан — папка «{folder_name}» не перенесена. '
+                f'Нажмите «Пересоздать структуру диска» после подключения диска.')
+            return
+
+        # Ensure base structure exists first (creates Неизвестное folder etc.)
+        self._mw.hierarchy_svc.ensure_structure(root)
+
+        # Explicitly move named folders (more reliable than scandir on WebDAV)
+        result = self._mw.hierarchy_svc.move_named_folders(root, folder_name)
+        moved  = result.get('moved', 0)
+        errors = result.get('errors', [])
+
+        if moved > 0:
+            self._mw.show_status(f'Папки «{folder_name}» перенесены в Неизвестное ({moved} шт.)')
+        elif errors:
+            self._mw.show_status(
+                f'Не удалось перенести «{folder_name}»: {errors[0]}')
+        else:
+            self._mw.show_status(
+                f'Папка «{folder_name}» не найдена на диске или уже удалена')
+
     def _auto_rebuild(self, deleted_folder: str = ''):
         """Rebuild folder structure on disk after hierarchy changes."""
         root = self._mw.cfg.root_path()
@@ -619,9 +651,6 @@ class SettingsPage(QWidget):
         if result.get('ok'):
             if result['created_count'] > 0:
                 self._mw.show_status(f'Папки на диске обновлены: +{result["created_count"]}')
-            if deleted_folder:
-                self._mw.show_status(
-                    f'Папка «{deleted_folder}» на диске не удалена автоматически — удалите вручную при необходимости')
 
     def _add_group(self):
         from app.domain.hierarchy import EquipmentGroup
@@ -657,7 +686,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_equipment_group(g.id)
             self._load_hierarchy()
-            self._auto_rebuild(deleted_folder=g.name)
+            self._move_deleted_folder(g.name)
 
     def _add_subtype(self):
         from app.domain.hierarchy import EquipmentSubType
@@ -708,7 +737,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_equipment_subtype(s.id)
             self._load_hierarchy()
-            self._auto_rebuild(deleted_folder=s.folder_name)
+            self._move_deleted_folder(s.folder_name)
 
     def _add_controller(self):
         from app.domain.hierarchy import ControllerModel
@@ -735,7 +764,7 @@ class SettingsPage(QWidget):
         if reply == QMessageBox.Yes:
             self._mw.db.delete_controller_model(c.id)
             self._load_hierarchy()
-            self._auto_rebuild(deleted_folder=c.name)
+            self._move_deleted_folder(c.name)
 
     def _rebuild_hierarchy(self):
         root = self._mw.cfg.root_path()
@@ -750,6 +779,27 @@ class SettingsPage(QWidget):
             QMessageBox.information(self, 'Готово',
                 f'Создано папок: {result["created_count"]}')
         self._mw.show_status(f'Структура обновлена: {result["created_count"]} папок')
+
+    def _sync_fw_from_disk(self):
+        """Scan ПО folder and add missing fw_version records to DB."""
+        root = self._mw.cfg.root_path()
+        if not root or not os.path.isdir(root):
+            QMessageBox.warning(self, 'Синхронизация', 'Сетевой диск недоступен.')
+            return
+        result = self._mw.hierarchy_svc.sync_fw_from_disk(root)
+        if not result.get('ok'):
+            errs = result.get('errors', [])
+            QMessageBox.warning(self, 'Синхронизация',
+                'Ошибка:\n' + '\n'.join(errs[:5] if errs else ['Неизвестная ошибка']))
+            return
+        added   = result.get('added', 0)
+        skipped = result.get('skipped', 0)
+        errs    = result.get('errors', [])
+        msg = f'Добавлено версий: {added}\nПропущено (уже есть): {skipped}'
+        if errs:
+            msg += f'\nОшибок: {len(errs)}\n' + '\n'.join(errs[:5])
+        QMessageBox.information(self, 'Синхронизация с диска', msg)
+        self._mw.show_status(f'Синхронизация завершена: +{added} версий')
 
     def _scan_unknown_files(self):
         import shutil as _shutil
@@ -1076,6 +1126,12 @@ class SettingsPage(QWidget):
         if old_root and current_root and old_root != current_root:
             self._mw.db.remap_fw_paths(old_root, current_root)
 
+        # Auto-sync firmwares from disk so search works immediately on new PC
+        sync_added = 0
+        if current_root and os.path.isdir(current_root):
+            sync_result = self._mw.hierarchy_svc.sync_fw_from_disk(current_root)
+            sync_added = sync_result.get('added', 0)
+
         # Refresh all UI components that depend on imported data
         self._load_general()
         self._load_apps()
@@ -1088,10 +1144,10 @@ class SettingsPage(QWidget):
             f'Подтипов добавлено: {counts.get("subtypes", 0)}\n'
             f'Контроллеров добавлено: {counts.get("controllers", 0)}\n'
             f'Производителей добавлено: {counts.get("manufacturers", 0)}\n'
-            f'Прошивок добавлено: {counts.get("fw_versions", 0)}\n'
+            f'Прошивок в базе: {counts.get("fw_versions", 0)} (из конфига) + {sync_added} (с диска)\n'
             f'Параметров добавлено: {counts.get("param_files", 0)}\n\n'
             f'Экспортировано: {data.get("exported_at", "?")}')
-        self._mw.show_status(f'Конфиг импортирован: {settings_count} настроек')
+        self._mw.show_status(f'Конфиг импортирован: {settings_count} настроек, +{sync_added} прошивок с диска')
 
     def _switch_role(self):
         role = self._role_combo.currentData()

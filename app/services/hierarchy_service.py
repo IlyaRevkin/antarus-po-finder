@@ -212,6 +212,12 @@ class HierarchyService:
                 for sub_entry in _scandir_safe(entry.path):
                     if sub_entry.name not in valid:
                         self._safe_move(sub_entry.path, unknown_po, moved, errors)
+                    elif sub_entry.is_dir() and sub_entry.name in real_sub_names:
+                        # Go into subtype folder and check controller level
+                        ctrl_valid = controllers | {OPC_FOLDER}
+                        for ctrl_entry in _scandir_safe(sub_entry.path):
+                            if ctrl_entry.name not in ctrl_valid:
+                                self._safe_move(ctrl_entry.path, unknown_po, moved, errors)
 
         # ── Параметры ────────────────────────────────────────────────────────
         params_root    = os.path.join(root_path, FOLDER_PARAMS)
@@ -263,6 +269,178 @@ class HierarchyService:
         except (OSError, shutil.Error) as e:
             errors.append(str(e))
             log.warning(f'collect_unknowns: failed to move {src!r}: {e}')
+
+    def move_named_folders(self, root_path: str, folder_name: str) -> dict:
+        """Explicitly find and move all folders with the given name from ПО tree to Неизвестное.
+
+        Unlike collect_unknowns (which relies on scandir across the whole tree),
+        this method uses os.path.isdir checks for specific known locations,
+        which is more reliable on slow/flaky WebDAV mounts.
+        """
+        if not root_path or not os.path.isdir(root_path):
+            return {'moved': 0, 'errors': []}
+
+        groups   = self._db.get_all_equipment_groups()
+        subtypes = self._db.get_all_equipment_subtypes()
+
+        po_root    = os.path.join(root_path, FOLDER_PO)
+        unknown_po = os.path.join(po_root, UNKNOWN_FW_FOLDER)
+
+        subs_by_group: dict[int, list] = {}
+        for s in subtypes:
+            subs_by_group.setdefault(s.group_id, []).append(s)
+
+        moved_list: list[str] = []
+        errors: list[str] = []
+
+        for grp in groups:
+            grp_folder = os.path.join(po_root, grp.name)
+            if not os.path.isdir(grp_folder):
+                continue
+
+            grp_subs  = subs_by_group.get(grp.id, [])
+            real_subs = [s for s in grp_subs if s.name != '—']
+            has_dash  = any(s.name == '—' for s in grp_subs)
+
+            # Controllers directly under group (e.g. ТГР with '—' subtype)
+            if has_dash:
+                candidate = os.path.join(grp_folder, folder_name)
+                if os.path.isdir(candidate):
+                    self._safe_move(candidate, unknown_po, moved_list, errors)
+
+            # Controllers inside each real subtype folder
+            for sub in real_subs:
+                sub_folder = os.path.join(grp_folder, sub.name)
+                if not os.path.isdir(sub_folder):
+                    continue
+                candidate = os.path.join(sub_folder, folder_name)
+                if os.path.isdir(candidate):
+                    self._safe_move(candidate, unknown_po, moved_list, errors)
+
+        return {'moved': len(moved_list), 'moved_paths': moved_list, 'errors': errors}
+
+    def sync_fw_from_disk(self, root_path: str) -> dict:
+        """Scan ПО folder structure and add missing fw_version records to DB.
+
+        Walks: ПО/{group}/{subtype}/{controller}/{version}/
+        and:   ПО/{group}/{controller}/{version}/  (for groups with '—' subtype only)
+        Skips versions already present in DB (by version_raw + subtype_id + controller_id).
+        Returns {'ok', 'added', 'skipped', 'errors'}.
+        """
+        if not root_path or not os.path.isdir(root_path):
+            return {'ok': False, 'added': 0, 'skipped': 0, 'errors': ['Диск недоступен']}
+
+        groups = self._db.get_all_equipment_groups()
+        subtypes = self._db.get_all_equipment_subtypes()
+        controllers = {c.name: c for c in self._db.get_all_controller_models()}
+
+        group_map = {g.name: g for g in groups}
+        subs_by_group: dict[int, list] = {}
+        for s in subtypes:
+            subs_by_group.setdefault(s.group_id, []).append(s)
+
+        po_root = os.path.join(root_path, FOLDER_PO)
+        if not os.path.isdir(po_root):
+            return {'ok': True, 'added': 0, 'skipped': 0, 'errors': [f'Папка {FOLDER_PO} не найдена']}
+
+        skip_names = {INSTRUCTIONS_FOLDER, IO_MAP_FOLDER, OPC_FOLDER, UNKNOWN_FW_FOLDER}
+
+        added = skipped = 0
+        errors: list[str] = []
+
+        for grp_entry in _scandir_safe(po_root):
+            if not grp_entry.is_dir() or grp_entry.name in skip_names:
+                continue
+            grp = group_map.get(grp_entry.name)
+            if not grp:
+                continue
+
+            grp_subs = subs_by_group.get(grp.id, [])
+            real_subs = {s.name: s for s in grp_subs if s.name != '—'}
+            has_dash_only = len(real_subs) == 0
+
+            if has_dash_only:
+                # Controllers directly under group (e.g., ТГР)
+                dash_sub = next((s for s in grp_subs if s.name == '—'), None)
+                if not dash_sub:
+                    continue
+                for ctrl_entry in _scandir_safe(grp_entry.path):
+                    if not ctrl_entry.is_dir() or ctrl_entry.name in skip_names:
+                        continue
+                    ctrl = controllers.get(ctrl_entry.name)
+                    if not ctrl:
+                        continue
+                    n, sk, e = self._sync_ctrl_versions(
+                        ctrl_entry.path, dash_sub.id, ctrl.id, grp.prefix, dash_sub.prefix)
+                    added += n; skipped += sk; errors.extend(e)
+            else:
+                # Subtypes exist (e.g., НГР → КПЧ, ВЗУ)
+                for sub_entry in _scandir_safe(grp_entry.path):
+                    if not sub_entry.is_dir() or sub_entry.name in skip_names:
+                        continue
+                    sub = real_subs.get(sub_entry.name)
+                    if not sub:
+                        continue
+                    for ctrl_entry in _scandir_safe(sub_entry.path):
+                        if not ctrl_entry.is_dir() or ctrl_entry.name in skip_names:
+                            continue
+                        ctrl = controllers.get(ctrl_entry.name)
+                        if not ctrl:
+                            continue
+                        n, sk, e = self._sync_ctrl_versions(
+                            ctrl_entry.path, sub.id, ctrl.id, grp.prefix, sub.prefix)
+                        added += n; skipped += sk; errors.extend(e)
+
+        return {'ok': True, 'added': added, 'skipped': skipped, 'errors': errors}
+
+    def _sync_ctrl_versions(self, ctrl_folder: str, subtype_id: int, controller_id: int,
+                             eq_prefix: int, sub_prefix: int) -> tuple[int, int, list]:
+        """Scan version sub-folders and add missing DB records."""
+        from app.domain.hierarchy import FWVersion
+        added = skipped = 0
+        errors: list[str] = []
+
+        existing = {v['version_raw'] for v in self._db.get_fw_versions(
+            subtype_id=subtype_id, controller_id=controller_id, include_archived=True)}
+
+        for ver_entry in _scandir_safe(ctrl_folder):
+            if not ver_entry.is_dir():
+                continue
+            if ver_entry.name in (INSTRUCTIONS_FOLDER, IO_MAP_FOLDER):
+                continue
+            fwv = FWVersion.parse(ver_entry.name)
+            if not fwv:
+                continue
+            if fwv.raw in existing:
+                skipped += 1
+                continue
+            try:
+                self._db.add_fw_version({
+                    'subtype_id':       subtype_id,
+                    'controller_id':    controller_id,
+                    'eq_prefix':        eq_prefix,
+                    'sub_prefix':       sub_prefix,
+                    'hw_version':       fwv.hw_version,
+                    'sw_version':       fwv.sw_version,
+                    'dt_str':           fwv.dt_str,
+                    'version_raw':      fwv.raw,
+                    'filename':         '',
+                    'disk_path':        ver_entry.path,
+                    'local_path':       '',
+                    'description':      '',
+                    'changelog':        '',
+                    'launch_types':     [],
+                    'io_map_path':      '',
+                    'instructions_path': '',
+                    'is_opc':           False,
+                    'request_num':      '',
+                })
+                added += 1
+                existing.add(fwv.raw)
+            except Exception as exc:
+                errors.append(f'{ver_entry.name}: {exc}')
+
+        return added, skipped, errors
 
     def scan_unknown_files(self, root_path: str) -> list[dict]:
         """Find files/folders that don't fit the hierarchy (both ПО and Параметры)."""
