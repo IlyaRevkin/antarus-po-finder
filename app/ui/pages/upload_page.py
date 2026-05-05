@@ -564,11 +564,21 @@ class UploadPage(QWidget):
     def _copy_to_folder(src: str, dst_folder: str):
         os.makedirs(dst_folder, exist_ok=True)
         if os.path.isfile(src):
-            shutil.copy2(src, os.path.join(dst_folder, os.path.basename(src)))
+            dst = os.path.join(dst_folder, os.path.basename(src))
+            # Skip if source and destination are the same file (prevents WinError 32)
+            if os.path.normcase(os.path.abspath(src)) != os.path.normcase(os.path.abspath(dst)):
+                shutil.copy2(src, dst)
         elif os.path.isdir(src):
+            src_abs = os.path.normcase(os.path.abspath(src))
+            dst_abs = os.path.normcase(os.path.abspath(dst_folder))
+            if src_abs == dst_abs:
+                return
             for entry in os.scandir(src):
                 if entry.is_file():
-                    shutil.copy2(entry.path, os.path.join(dst_folder, entry.name))
+                    dst_file = os.path.join(dst_folder, entry.name)
+                    src_file = os.path.normcase(os.path.abspath(entry.path))
+                    if src_file != os.path.normcase(os.path.abspath(dst_file)):
+                        shutil.copy2(entry.path, dst_file)
 
     def _reset_form(self):
         self._src_path = ''

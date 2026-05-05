@@ -1024,14 +1024,20 @@ class SettingsPage(QWidget):
         os.makedirs(conf_dir, exist_ok=True)
         rows = self._mw.db._conn.execute('SELECT key, value FROM settings').fetchall()
         settings = {r['key']: r['value'] for r in rows}
+        hierarchy = self._mw.db.export_hierarchy_data()
         data = {
             'exported_at': _dt.now().isoformat(timespec='seconds'),
             'settings': settings,
+            **hierarchy,
         }
         out_path = os.path.join(conf_dir, 'po_finder_config.json')
         with open(out_path, 'w', encoding='utf-8') as f:
             _json.dump(data, f, ensure_ascii=False, indent=2)
-        QMessageBox.information(self, 'Экспорт', f'Конфиг сохранён:\n{out_path}')
+        fwv_count = len(hierarchy.get('fw_versions', []))
+        QMessageBox.information(self, 'Экспорт',
+            f'Конфиг сохранён:\n{out_path}\n\n'
+            f'Прошивок: {fwv_count}  '
+            f'Групп: {len(hierarchy.get("equipment_groups", []))}')
         self._mw.show_status('Конфиг экспортирован')
 
     def _import_config(self):
@@ -1046,18 +1052,34 @@ class SettingsPage(QWidget):
             return
         with open(src, encoding='utf-8') as f:
             data = _json.load(f)
+
+        # Import settings (key-value)
         settings = data.get('settings', {})
-        skip_keys = {'admin_password', 'programmer_password'}
-        count = 0
+        skip_keys = {'admin_password', 'programmer_password', 'naladchik_admin_password'}
+        settings_count = 0
         for key, value in settings.items():
             if key not in skip_keys:
                 self._mw.cfg.set(key, value)
-                count += 1
+                settings_count += 1
+
+        # Import hierarchy tables + fw_versions
+        counts = self._mw.db.import_hierarchy_data(data)
+
+        # Refresh all UI components that depend on imported data
         self._load_general()
+        self._load_apps()
+        self._load_hierarchy()
+        self._mw.reload_sidebar_apps()
+
         QMessageBox.information(self, 'Импорт',
-            f'Применено настроек: {count}\n'
+            f'Применено настроек: {settings_count}\n'
+            f'Групп добавлено: {counts.get("groups", 0)}\n'
+            f'Подтипов добавлено: {counts.get("subtypes", 0)}\n'
+            f'Контроллеров добавлено: {counts.get("controllers", 0)}\n'
+            f'Производителей добавлено: {counts.get("manufacturers", 0)}\n'
+            f'Прошивок добавлено: {counts.get("fw_versions", 0)}\n\n'
             f'Экспортировано: {data.get("exported_at", "?")}')
-        self._mw.show_status(f'Конфиг импортирован: {count} настроек')
+        self._mw.show_status(f'Конфиг импортирован: {settings_count} настроек')
 
     def _switch_role(self):
         role = self._role_combo.currentData()

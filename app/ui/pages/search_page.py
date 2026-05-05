@@ -44,6 +44,12 @@ class SearchPage(QWidget):
         proto_lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         proto_row.addWidget(proto_lbl)
 
+        # Current path label — always visible, shows configured path
+        self._proto_path_lbl = QLabel('не задана')
+        self._proto_path_lbl.setObjectName('muted')
+        self._proto_path_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        proto_row.addWidget(self._proto_path_lbl, 1)
+
         open_proto_btn = QPushButton('Открыть')
         open_proto_btn.setObjectName('secondary')
         open_proto_btn.setIcon(make_icon('open', ICON_SECONDARY, 14))
@@ -152,7 +158,15 @@ class SearchPage(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self._refresh_completer()
-        self._pick_proto_btn.setVisible(not bool(self._mw.cfg.protocol_folder()))
+        self._update_proto_label()
+
+    def _update_proto_label(self):
+        path = self._mw.cfg.get('inspection_folder')
+        if path:
+            self._proto_path_lbl.setText(path)
+            self._proto_path_lbl.setToolTip(path)
+        else:
+            self._proto_path_lbl.setText('не задана')
 
     def _refresh_completer(self):
         disk = self._mw.cfg.second_disk_path()
@@ -202,7 +216,7 @@ class SearchPage(QWidget):
         path = QFileDialog.getExistingDirectory(self, 'Выберите папку протокола')
         if path:
             self._mw.cfg.set_inspection_folder(path)
-            self._pick_proto_btn.setVisible(False)
+            self._update_proto_label()
             self._mw.show_status(f'Папка протокола: {path}')
 
     def _scan_document(self):
@@ -389,11 +403,27 @@ class SearchPage(QWidget):
             else:
                 all_tpl = self._mw.db.get_all_templates()
                 has_params = any(res.rule.name in t.rule_names for t in all_tpl)
+
+            # Detect KINCO HMI files in the firmware folder (hierarchy results only)
+            has_hmi = False
+            has_map = bool(getattr(res.rule, 'io_map_path', ''))
+            if sub_id is not None:
+                disk_path = getattr(res.rule, 'firmware_dir', '')
+                if disk_path and os.path.isdir(disk_path):
+                    has_hmi = bool(self._find_fw_file_by_exts(disk_path, self._KINCO_HMI_EXTS))
+                    if not has_map:
+                        # Check io_map folder one level up from version folder
+                        ctrl_folder = os.path.dirname(disk_path)
+                        io_folder = os.path.join(ctrl_folder, 'Карта ВВ')
+                        has_map = os.path.isdir(io_folder) and bool(os.listdir(io_folder))
+
             card = FirmwareCard(
                 res,
                 has_local=self._has_local(res.rule),
                 has_any_local=self._has_any_local(res.rule),
                 has_params=has_params,
+                has_hmi=has_hmi,
+                has_map=has_map,
             )
             card.open_requested.connect(self._open_fw)
             card.open_plc_requested.connect(self._open_plc)
@@ -834,6 +864,15 @@ class SearchPage(QWidget):
                 fw = self._find_fw_file_by_exts(ver_dir, exts)
                 os.startfile(fw if fw else ver_dir)
                 return
+        # Fallback: hierarchy result has firmware_dir pointing to the version folder on disk
+        disk_path = getattr(rule, 'firmware_dir', '')
+        if disk_path and os.path.isdir(disk_path):
+            fw = self._find_fw_file_by_exts(disk_path, exts)
+            if fw:
+                os.startfile(fw)
+                return
+            os.startfile(disk_path)
+            return
         QMessageBox.information(self, f'Открыть {label}',
             'Прошивка не найдена локально.\nНажмите «Скачать» для копирования с сервера.')
 
@@ -1066,15 +1105,17 @@ class SearchPage(QWidget):
 
     def _show_params_hierarchy_dialog(self):
         from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QComboBox,
-                                        QLabel, QPushButton, QHBoxLayout)
+                                        QLabel, QPushButton, QHBoxLayout,
+                                        QListWidget, QListWidgetItem)
+        from PySide6.QtCore import Qt
         root_path = self._mw.cfg.root_path()
 
         dlg = QDialog(self)
-        dlg.setWindowTitle('Поиск параметров')
-        dlg.setMinimumWidth(500)
+        dlg.setWindowTitle('Параметры — выбор файла')
+        dlg.setMinimumSize(560, 480)
         lay = QVBoxLayout(dlg)
 
-        hint = QLabel('Не заполняйте поля — покажет все параметры.\nЧем больше выбрано, тем точнее выборка.')
+        hint = QLabel('Выберите фильтр — список обновится автоматически.')
         hint.setObjectName('muted')
         lay.addWidget(hint)
 
@@ -1095,6 +1136,22 @@ class SearchPage(QWidget):
         sub_combo.addItem(ALL, None)
         form.addRow('Подтип:', sub_combo)
 
+        mfr_combo = QComboBox()
+        mfr_combo.addItem(ALL, '')
+        for m in self._mw.db.get_param_manufacturers():
+            mfr_combo.addItem(m, m)
+        form.addRow('Производитель:', mfr_combo)
+
+        lay.addLayout(form)
+
+        # File list — shows matching param_files from DB
+        files_lbl = QLabel('Файлы параметров:')
+        files_lbl.setObjectName('muted')
+        lay.addWidget(files_lbl)
+
+        files_list = QListWidget()
+        lay.addWidget(files_list, 1)
+
         def _rebuild_subtypes():
             grp = grp_combo.currentData()
             sub_combo.blockSignals(True)
@@ -1105,64 +1162,79 @@ class SearchPage(QWidget):
                     if s.name != '—':
                         sub_combo.addItem(s.name, s)
             sub_combo.blockSignals(False)
-            _update()
+            _update_list()
+
+        def _update_list():
+            grp = grp_combo.currentData()
+            sub = sub_combo.currentData()
+            mfr = mfr_combo.currentData() or None
+
+            # Collect matching param_files from DB
+            all_files = self._mw.db.get_param_files(manufacturer=mfr)
+
+            if grp is not None:
+                # Filter by group
+                subs_in_grp = {s.id for s in self._mw.db.get_subtypes_for_group(grp.id)}
+                all_files = [f for f in all_files if f.get('subtype_id') in subs_in_grp]
+            if sub is not None:
+                all_files = [f for f in all_files if f.get('subtype_id') == sub.id]
+
+            files_list.clear()
+            for f in all_files:
+                grp_n = f.get('group_name') or ''
+                sub_n = f.get('subtype_name') or ''
+                mfr_n = f.get('manufacturer') or ''
+                label = f'{f["filename"]}  [{grp_n}/{sub_n}  {mfr_n}]'
+                item = QListWidgetItem(label)
+                item.setData(Qt.UserRole, f)
+                files_list.addItem(item)
+            files_lbl.setText(f'Файлы параметров: {len(all_files)}')
 
         grp_combo.currentIndexChanged.connect(_rebuild_subtypes)
-
-        mfr_combo = QComboBox()
-        mfr_combo.addItem(ALL, '')
-        for m in self._mw.db.get_param_manufacturers():
-            mfr_combo.addItem(m, m)
-        form.addRow('Производитель:', mfr_combo)
-
-        lay.addLayout(form)
-
-        preview_lbl = QLabel('—')
-        preview_lbl.setWordWrap(True)
-        preview_lbl.setObjectName('muted')
-        lay.addWidget(preview_lbl)
-
-        def _best_path():
-            if not root_path:
-                return ''
-            parts = [root_path, 'Параметры']
-            grp = grp_combo.currentData()
-            if grp:
-                parts.append(grp.name)
-            sub = sub_combo.currentData()
-            if sub:
-                parts.append(sub.name)
-            m = mfr_combo.currentData()
-            if m:
-                parts.append(m)
-            return os.path.join(*parts)
-
-        def _update():
-            path = _best_path()
-            if not path:
-                preview_lbl.setText('Путь к диску не настроен')
-                return
-            exists = '✓' if os.path.isdir(path) else '✗'
-            preview_lbl.setText(f'{exists} {path}')
-
-        sub_combo.currentIndexChanged.connect(_update)
-        mfr_combo.currentIndexChanged.connect(_update)
-        _update()
+        sub_combo.currentIndexChanged.connect(_update_list)
+        mfr_combo.currentIndexChanged.connect(_update_list)
+        _update_list()
 
         btn_row = QHBoxLayout()
-        open_btn = QPushButton('Открыть папку')
 
-        def _open():
-            path = _best_path()
-            if not path:
+        def _open_selected():
+            item = files_list.currentItem()
+            if not item:
                 return
-            os.makedirs(path, exist_ok=True)
-            os.startfile(path)
+            f = item.data(Qt.UserRole)
+            disk_path = f.get('disk_path', '')
+            filename  = f.get('filename', '')
+            full = os.path.join(disk_path, filename) if disk_path and filename else disk_path
+            if full and os.path.exists(full):
+                os.startfile(full)
+            elif disk_path and os.path.isdir(disk_path):
+                os.startfile(disk_path)
+            else:
+                QMessageBox.warning(dlg, 'Открыть', f'Файл не найден:\n{full}')
 
-        open_btn.clicked.connect(_open)
-        btn_row.addWidget(open_btn)
+        def _open_folder():
+            item = files_list.currentItem()
+            if not item:
+                return
+            f = item.data(Qt.UserRole)
+            folder = f.get('disk_path', '')
+            if folder and os.path.isdir(folder):
+                os.startfile(folder)
+            elif root_path:
+                os.startfile(os.path.join(root_path, 'Параметры'))
+
+        open_file_btn = QPushButton('Открыть файл')
+        open_file_btn.clicked.connect(_open_selected)
+        btn_row.addWidget(open_file_btn)
+
+        open_folder_btn = QPushButton('Открыть папку')
+        open_folder_btn.setObjectName('secondary')
+        open_folder_btn.clicked.connect(_open_folder)
+        btn_row.addWidget(open_folder_btn)
+
         btn_row.addStretch()
         close_btn = QPushButton('Закрыть')
+        close_btn.setObjectName('secondary')
         close_btn.clicked.connect(dlg.accept)
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)

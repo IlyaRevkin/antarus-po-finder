@@ -402,8 +402,9 @@ class Database:
         return max(versions, key=_key)
 
     def search_fw_versions_by_tokens(self, tokens: list[str]) -> list[dict]:
-        """Return latest fw_version per (subtype_id, controller_id) matching ALL tokens.
-        Tokens are matched case-insensitively against group name, subtype name/folder, controller name.
+        """Return latest fw_version per (subtype_id, controller_id) scored against query tokens.
+        Hierarchy names (group, subtype, controller) are matched against the query — not vice versa.
+        This handles long cabinet-name queries that contain hierarchy keywords among other words.
         """
         rows = self._conn.execute('''
             SELECT fv.id, fv.subtype_id, fv.controller_id, fv.version_raw,
@@ -425,26 +426,30 @@ class Database:
         if not rows:
             return []
 
-        toks_upper = [t.upper() for t in tokens if t]
+        q_upper = ' '.join(t.upper() for t in tokens if t)
 
-        def _matches(row) -> bool:
-            haystack = ' '.join([
-                row['group_name']     or '',
-                row['subtype_name']   or '',
-                row['subtype_folder'] or '',
-                row['ctrl_name']      or '',
-            ]).upper()
-            return all(t in haystack for t in toks_upper)
+        def _score(row) -> int:
+            # Check if hierarchy component names appear in the query (not all query tokens in haystack).
+            # This works for both short ("ПЖ KINCO") and long cabinet-name queries.
+            parts = [
+                (row['group_name']     or '').upper(),
+                (row['subtype_name']   or '').upper(),
+                (row['subtype_folder'] or '').upper(),
+                (row['ctrl_name']      or '').upper(),
+            ]
+            return sum(1 for p in parts if p and len(p) >= 2 and p in q_upper)
 
-        seen: dict[tuple, dict] = {}
+        seen: dict[tuple, tuple] = {}  # key → (score, row_dict)
         for row in rows:
-            if not _matches(row):
+            sc = _score(row)
+            if sc == 0:
                 continue
             key = (row['subtype_id'], row['controller_id'])
-            if key not in seen:
-                seen[key] = dict(row)
+            if key not in seen or sc > seen[key][0]:
+                seen[key] = (sc, dict(row))
 
-        return list(seen.values())
+        # Return sorted by score descending
+        return [v for _, v in sorted(seen.values(), key=lambda x: -x[0])]
 
     def get_fw_versions_history(self, subtype_id: int, controller_id: int,
                                 include_archived: bool = False) -> list[dict]:
@@ -535,6 +540,149 @@ class Database:
     def delete_param_file(self, file_id: int):
         self._conn.execute('UPDATE param_files SET archived=1 WHERE id=?', (file_id,))
         self._conn.commit()
+
+    # ── Config export / import ────────────────────────────────────────────────
+
+    def export_hierarchy_data(self) -> dict:
+        """Serialize all hierarchy tables + fw_versions to a dict for config export."""
+        groups = [dict(r) for r in self._conn.execute(
+            'SELECT name, prefix, sort_order FROM equipment_groups ORDER BY sort_order'
+        ).fetchall()]
+
+        # Subtypes with group_name so IDs are not needed on import
+        subtypes = [dict(r) for r in self._conn.execute('''
+            SELECT es.name, es.prefix, es.folder_name, es.sort_order, eg.name AS group_name
+            FROM equipment_subtypes es
+            JOIN equipment_groups eg ON es.group_id = eg.id
+            ORDER BY es.sort_order
+        ''').fetchall()]
+
+        controllers = [dict(r) for r in self._conn.execute(
+            'SELECT name, sort_order FROM controller_models ORDER BY sort_order'
+        ).fetchall()]
+
+        manufacturers = [dict(r) for r in self._conn.execute(
+            'SELECT name, sort_order FROM param_manufacturers ORDER BY sort_order, name'
+        ).fetchall()]
+
+        # fw_versions with human-readable names so IDs survive re-import
+        fw_versions = [dict(r) for r in self._conn.execute('''
+            SELECT fv.version_raw, fv.hw_version, fv.sw_version, fv.eq_prefix, fv.sub_prefix,
+                   fv.dt_str, fv.filename, fv.disk_path, fv.local_path, fv.description,
+                   fv.changelog, fv.launch_types, fv.io_map_path, fv.instructions_path,
+                   fv.is_opc, fv.request_num, fv.upload_date, fv.archived,
+                   eg.name AS group_name,
+                   es.name AS subtype_name,
+                   cm.name AS ctrl_name
+            FROM fw_versions fv
+            JOIN equipment_subtypes es ON fv.subtype_id  = es.id
+            JOIN equipment_groups   eg ON es.group_id    = eg.id
+            JOIN controller_models  cm ON fv.controller_id = cm.id
+            ORDER BY fv.id
+        ''').fetchall()]
+
+        return {
+            'equipment_groups':    groups,
+            'equipment_subtypes':  subtypes,
+            'controller_models':   controllers,
+            'param_manufacturers': manufacturers,
+            'fw_versions':         fw_versions,
+        }
+
+    def import_hierarchy_data(self, data: dict) -> dict:
+        """Upsert hierarchy tables + fw_versions from exported dict. Returns counts."""
+        counts: dict[str, int] = {}
+
+        # Groups
+        groups_added = 0
+        for g in data.get('equipment_groups', []):
+            cur = self._conn.execute(
+                'INSERT OR IGNORE INTO equipment_groups(name, prefix, sort_order) VALUES(?,?,?)',
+                (g['name'], g.get('prefix', 0), g.get('sort_order', 0))
+            )
+            groups_added += cur.rowcount
+        counts['groups'] = groups_added
+
+        # Subtypes — resolve group_id by name
+        subs_added = 0
+        for s in data.get('equipment_subtypes', []):
+            row = self._conn.execute(
+                'SELECT id FROM equipment_groups WHERE name=?', (s['group_name'],)
+            ).fetchone()
+            if not row:
+                continue
+            gid = row['id']
+            cur = self._conn.execute(
+                '''INSERT OR IGNORE INTO equipment_subtypes(group_id, name, prefix, folder_name, sort_order)
+                   VALUES(?,?,?,?,?)''',
+                (gid, s['name'], s.get('prefix', 0), s.get('folder_name', s['name']), s.get('sort_order', 0))
+            )
+            subs_added += cur.rowcount
+        counts['subtypes'] = subs_added
+
+        # Controllers
+        ctrls_added = 0
+        for c in data.get('controller_models', []):
+            cur = self._conn.execute(
+                'INSERT OR IGNORE INTO controller_models(name, sort_order) VALUES(?,?)',
+                (c['name'], c.get('sort_order', 0))
+            )
+            ctrls_added += cur.rowcount
+        counts['controllers'] = ctrls_added
+
+        # Manufacturers
+        mfr_added = 0
+        for m in data.get('param_manufacturers', []):
+            cur = self._conn.execute(
+                'INSERT OR IGNORE INTO param_manufacturers(name, sort_order) VALUES(?,?)',
+                (m['name'], m.get('sort_order', 0))
+            )
+            mfr_added += cur.rowcount
+        counts['manufacturers'] = mfr_added
+
+        # fw_versions — resolve subtype_id and controller_id by name
+        fwv_added = 0
+        for fv in data.get('fw_versions', []):
+            sub_row = self._conn.execute(
+                '''SELECT es.id FROM equipment_subtypes es
+                   JOIN equipment_groups eg ON es.group_id = eg.id
+                   WHERE eg.name=? AND es.name=?''',
+                (fv.get('group_name', ''), fv.get('subtype_name', ''))
+            ).fetchone()
+            ctrl_row = self._conn.execute(
+                'SELECT id FROM controller_models WHERE name=?', (fv.get('ctrl_name', ''),)
+            ).fetchone()
+            if not sub_row or not ctrl_row:
+                continue
+            # Skip if already exists (same subtype+controller+version)
+            exists = self._conn.execute(
+                '''SELECT 1 FROM fw_versions WHERE subtype_id=? AND controller_id=? AND version_raw=?''',
+                (sub_row['id'], ctrl_row['id'], fv.get('version_raw', ''))
+            ).fetchone()
+            if exists:
+                continue
+            self._conn.execute(
+                '''INSERT INTO fw_versions
+                   (subtype_id, controller_id, eq_prefix, sub_prefix, hw_version, sw_version,
+                    dt_str, version_raw, filename, disk_path, local_path, description, changelog,
+                    launch_types, io_map_path, instructions_path, is_opc, request_num, upload_date, archived)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (sub_row['id'], ctrl_row['id'],
+                 fv.get('eq_prefix', 0), fv.get('sub_prefix', 0),
+                 fv.get('hw_version', 0), fv.get('sw_version', 0),
+                 fv.get('dt_str', ''), fv.get('version_raw', ''),
+                 fv.get('filename', ''), fv.get('disk_path', ''),
+                 fv.get('local_path', ''), fv.get('description', ''),
+                 fv.get('changelog', ''), fv.get('launch_types', '[]'),
+                 fv.get('io_map_path', ''), fv.get('instructions_path', ''),
+                 int(fv.get('is_opc', 0)), fv.get('request_num', ''),
+                 fv.get('upload_date', _now()), int(fv.get('archived', 0)))
+            )
+            fwv_added += 1
+        counts['fw_versions'] = fwv_added
+
+        self._conn.commit()
+        return counts
 
     # ── Settings ──────────────────────────────────────────────────────────────
 
